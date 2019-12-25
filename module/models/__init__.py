@@ -1,0 +1,1 @@
+from .MnistModel import MnistModel

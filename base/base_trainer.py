@@ -8,9 +8,9 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config,**kwargs):
         self.config = config
-        self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
+        self.logger = config.get_logger('trainer', config['trainer']['args']['verbosity'])
 
         # setup GPU device if available, move model into configured device
         self.device, device_ids = self._prepare_device(config['n_gpu'])
@@ -22,7 +22,8 @@ class BaseTrainer:
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
 
-        cfg_trainer = config['trainer']
+        cfg_trainer = config['trainer']['args']
+    
         self.epochs = cfg_trainer['epochs']
         self.save_period = cfg_trainer['save_period']
         self.monitor = cfg_trainer.get('monitor', 'off')

@@ -2,12 +2,12 @@ import argparse
 import collections
 import torch
 import numpy as np
-import data_loader.data_loaders as module_data
-import model.loss as module_loss
-import model.metric as module_metric
-import model.model as module_arch
+import data_loader as module_dataloader
+from module import  losses as module_loss
+from module import metrics as module_metric
+from module import models as module_models
+import trainer as module_trainer
 from parse_config import ConfigParser
-from trainer import Trainer
 
 
 # fix random seeds for reproducibility
@@ -17,15 +17,16 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
+
 def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
-    data_loader = config.init_obj('data_loader', module_data)
+    data_loader = config.init_obj('data_loader', module_dataloader)
     valid_data_loader = data_loader.split_validation()
 
     # build model architecture, then print to console
-    model = config.init_obj('arch', module_arch)
+    model = config.init_obj('model', module_models)
     logger.info(model)
 
     # get function handles of loss and metrics
@@ -38,11 +39,12 @@ def main(config):
 
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
 
-    trainer = Trainer(model, criterion, metrics, optimizer,
-                      config=config,
-                      data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
-                      lr_scheduler=lr_scheduler)
+    print(config['trainer']['args'])
+    trainer = config.init_obj('trainer', module_trainer, model, criterion, metrics, optimizer,
+                              config=config,
+                              data_loader=data_loader,
+                              valid_data_loader=valid_data_loader,
+                              lr_scheduler=lr_scheduler)
 
     trainer.train()
 

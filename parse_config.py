@@ -7,6 +7,20 @@ from datetime import datetime
 from logger import setup_logging
 from utils import read_json, write_json
 
+import yaml
+from yaml import FullLoader as Loader
+from yaml import Dumper as Dumper
+
+def read_yaml(filepath):
+    with open(filepath, 'r') as f:
+        data = yaml.load(f, Loader=Loader)
+    return data
+
+
+def write_yaml(filepath, data):
+    with open(filepath, 'w') as f:
+        data = yaml.dump(data, f, Dumper=Dumper)
+
 
 class ConfigParser:
     def __init__(self, config, resume=None, modification=None, run_id=None):
@@ -23,10 +37,10 @@ class ConfigParser:
         self.resume = resume
 
         # set save_dir where trained model and log will be saved.
-        save_dir = Path(self.config['trainer']['save_dir'])
+        save_dir = Path(self.config['trainer']['args']['save_dir'])
 
         exper_name = self.config['name']
-        if run_id is None: # use timestamp as default run-id
+        if run_id is None:  # use timestamp as default run-id
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')
         self._save_dir = save_dir / 'models' / exper_name / run_id
         self._log_dir = save_dir / 'log' / exper_name / run_id
@@ -59,6 +73,7 @@ class ConfigParser:
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+
         if args.resume is not None:
             resume = Path(args.resume)
             cfg_fname = resume.parent / 'config.json'
@@ -67,14 +82,14 @@ class ConfigParser:
             assert args.config is not None, msg_no_cfg
             resume = None
             cfg_fname = Path(args.config)
-        
-        config = read_json(cfg_fname)
+
+        config = read_yaml(cfg_fname)
         if args.config and resume:
             # update new config for fine-tuning
             config.update(read_json(args.config))
 
         # parse custom cli options into dictionary
-        modification = {opt.target : getattr(args, _get_opt_name(opt.flags)) for opt in options}
+        modification = {opt.target: getattr(args, _get_opt_name(opt.flags)) for opt in options}
         return cls(config, resume, modification)
 
     def init_obj(self, name, module, *args, **kwargs):
@@ -86,6 +101,8 @@ class ConfigParser:
         is equivalent to
         `object = module.name(a, b=1)`
         """
+        # module_name = '%s.%s' % (name, self[name]['type'])
+        # print(module_name)
         module_name = self[name]['type']
         module_args = dict(self[name]['args'])
         assert all([k not in module_args for k in kwargs]), 'Overwriting kwargs given in config file is not allowed'
@@ -112,7 +129,8 @@ class ConfigParser:
         return self.config[name]
 
     def get_logger(self, name, verbosity=2):
-        msg_verbosity = 'verbosity option {} is invalid. Valid options are {}.'.format(verbosity, self.log_levels.keys())
+        msg_verbosity = 'verbosity option {} is invalid. Valid options are {}.'.format(
+            verbosity, self.log_levels.keys())
         assert verbosity in self.log_levels, msg_verbosity
         logger = logging.getLogger(name)
         logger.setLevel(self.log_levels[verbosity])
@@ -132,6 +150,8 @@ class ConfigParser:
         return self._log_dir
 
 # helper functions to update config dict with custom cli options
+
+
 def _update_config(config, modification):
     if modification is None:
         return config
@@ -141,16 +161,19 @@ def _update_config(config, modification):
             _set_by_path(config, k, v)
     return config
 
+
 def _get_opt_name(flags):
     for flg in flags:
         if flg.startswith('--'):
             return flg.replace('--', '')
     return flags[0].replace('--', '')
 
+
 def _set_by_path(tree, keys, value):
     """Set a value in a nested object in tree by sequence of keys."""
     keys = keys.split(';')
     _get_by_path(tree, keys[:-1])[keys[-1]] = value
+
 
 def _get_by_path(tree, keys):
     """Access a nested object in tree by sequence of keys."""
