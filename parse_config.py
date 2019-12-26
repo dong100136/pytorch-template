@@ -83,6 +83,7 @@ class ConfigParser:
             resume = None
             cfg_fname = Path(args.config)
 
+        cfg_fname = str(cfg_fname)
         config = read_yaml(cfg_fname)
         if args.config and resume:
             # update new config for fine-tuning
