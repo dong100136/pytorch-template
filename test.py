@@ -1,10 +1,14 @@
 import argparse
 import torch
 from tqdm import tqdm
-import data_loader.data_loaders as module_data
-import model.loss as module_loss
-import model.metric as module_metric
-import model.model as module_arch
+import data_loader as module_dataloader
+from module import losses as module_loss
+from module import metrics as module_metric
+from module import models as module_models
+from module import predict_hook as module_predict_hook
+import trainer as module_trainer
+import numpy as np
+
 from parse_config import ConfigParser
 
 
@@ -12,22 +16,23 @@ def main(config):
     logger = config.get_logger('test')
 
     # setup data_loader instances
-    data_loader = getattr(module_data, config['data_loader']['type'])(
-        config['data_loader']['args']['data_dir'],
-        batch_size=512,
-        shuffle=False,
-        validation_split=0.0,
-        training=False,
-        num_workers=2
-    )
+    data_loader = config.init_obj('data_loader', module_dataloader)
+    data_loader = data_loader.split_validation()
 
     # build model architecture
-    model = config.init_obj('arch', module_arch)
+    model = config.init_obj('model', module_models)
     logger.info(model)
 
     # get function handles of loss and metrics
     loss_fn = getattr(module_loss, config['loss'])
     metric_fns = [getattr(module_metric, met) for met in config['metrics']]
+
+    predict_hooks = [getattr(module_predict_hook, met['type']) for met in config['predict_hook']]
+
+    best_model_path = config.save_dir / "model_best.pth"
+    if config.resume == None and best_model_path.exists():
+        print("find best model %s" % best_model_path)
+        config.resume = best_model_path
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
     checkpoint = torch.load(config.resume)
@@ -44,10 +49,15 @@ def main(config):
     total_loss = 0.0
     total_metrics = torch.zeros(len(metric_fns))
 
+    preds = np.zeros((0, 2))
+    targets = np.zeros((0, 1))
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
             output = model(data)
+
+            preds = np.vstack([preds, output.cpu().detach().numpy()])
+            targets = np.vstack([targets, target.view((-1, 1)).cpu().detach().numpy()])
 
             #
             # save sample images, or do something with output here
@@ -66,6 +76,11 @@ def main(config):
         met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
     })
     logger.info(log)
+
+    targets = np.squeeze(targets)
+
+    for hook in predict_hooks:
+        hook(targets, preds, config.save_dir)
 
 
 if __name__ == '__main__':

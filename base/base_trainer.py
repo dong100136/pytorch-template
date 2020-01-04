@@ -2,13 +2,15 @@ import torch
 from abc import abstractmethod
 from numpy import inf
 from logger import TensorboardWriter
+import os
 
 
 class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, criterion, metric_ftns, optimizer, config,**kwargs):
+
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, **kwargs):
         self.config = config
         self.logger = config.get_logger('trainer', config['trainer']['args']['verbosity'])
 
@@ -23,7 +25,7 @@ class BaseTrainer:
         self.optimizer = optimizer
 
         cfg_trainer = config['trainer']['args']
-    
+
         self.epochs = cfg_trainer['epochs']
         self.save_period = cfg_trainer['save_period']
         self.monitor = cfg_trainer.get('monitor', 'off')
@@ -42,12 +44,32 @@ class BaseTrainer:
         self.start_epoch = 1
 
         self.checkpoint_dir = config.save_dir
+        self.save_last_models = 5
 
-        # setup visualization writer instance                
+        # setup visualization writer instance
         self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
 
         if config.resume is not None:
             self._resume_checkpoint(config.resume)
+
+        self.load_last_checkpoint()
+
+    def load_last_checkpoint(self):
+        max_epoch = -1
+        max_epoch_pth_path = None
+        # find last checkpoint from model_dir
+        for checkpoint_pth  in self.checkpoint_dir.glob("*.pth"):
+            pth_name = checkpoint_pth.stem
+            if pth_name.find('epoch') >=0:
+                epoch_num = int(pth_name.split("epoch")[-1])
+                if epoch_num>max_epoch:
+                    max_epoch = epoch_num
+                    max_epoch_pth_path = checkpoint_pth
+        
+        if max_epoch>0:
+            self.logger.info(
+                "find latest checkpoint {} and load it.".format(max_epoch_pth_path.stem))
+            self._resume_checkpoint(max_epoch_pth_path)
 
     @abstractmethod
     def _train_epoch(self, epoch):
@@ -64,6 +86,7 @@ class BaseTrainer:
         """
         not_improved_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
+            self.writer.add_scalar('lr',self.lr,epoch)
             result = self._train_epoch(epoch)
 
             # save logged informations into log dict
@@ -71,8 +94,10 @@ class BaseTrainer:
             log.update(result)
 
             # print logged informations to the screen
+            self.logger.info('=' * 50)
             for key, value in log.items():
                 self.logger.info('    {:15s}: {}'.format(str(key), value))
+            self.logger.info('=' * 50)
 
             # evaluate model performance according to configured metric, save best checkpoint as model_best
             best = False
@@ -101,6 +126,8 @@ class BaseTrainer:
 
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch, save_best=best)
+        
+        self.logger.info("Congratulation, the training is finish!")
 
     def _prepare_device(self, n_gpu_use):
         """
@@ -139,10 +166,20 @@ class BaseTrainer:
         filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         torch.save(state, filename)
         self.logger.info("Saving checkpoint: {} ...".format(filename))
+
         if save_best:
             best_path = str(self.checkpoint_dir / 'model_best.pth')
             torch.save(state, best_path)
             self.logger.info("Saving current best: model_best.pth ...")
+
+        # delete old pth
+        for pth_file in self.checkpoint_dir.glob("*.pth"):
+            pth_name = pth_file.stem
+            if pth_name.find('epoch') >= 0:
+                old_epoch = int(pth_name.split("epoch")[-1])
+                if epoch - old_epoch > self.save_last_models:
+                    self.logger.info("removing older pth {}".format(pth_name))
+                    os.remove(pth_file)
 
     def _resume_checkpoint(self, resume_path):
         """
@@ -157,7 +194,7 @@ class BaseTrainer:
         self.mnt_best = checkpoint['monitor_best']
 
         # load architecture params from checkpoint.
-        if checkpoint['config']['arch'] != self.config['arch']:
+        if checkpoint['config']['model']['type'] != self.config['model']['type']:
             self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
                                 "checkpoint. This may yield an exception while state_dict is being loaded.")
         self.model.load_state_dict(checkpoint['state_dict'])

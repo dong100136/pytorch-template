@@ -42,10 +42,12 @@ class TensorboardWriter():
         self.step = step
         if step == 0:
             self.timer = datetime.now()
+            return 0
         else:
             duration = datetime.now() - self.timer
             self.add_scalar('steps_per_sec', 1 / duration.total_seconds())
             self.timer = datetime.now()
+            return 1/duration.total_seconds()
 
     def __getattr__(self, name):
         """

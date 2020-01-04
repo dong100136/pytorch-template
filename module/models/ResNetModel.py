@@ -8,13 +8,15 @@ from module.basic_models.resnet import resnet50
 class ResNetModel(BaseModel):
     def __init__(self, num_classes=10):
         super().__init__()
-        self.model = resnet50(pretrained=True, num_classes=10)
-        self.fc1 = nn.Linear(2048, 256)
-        self.fc2 = nn.Linear(256, 10)
+        self.model = resnet50(pretrained=True, header=False)
+        self.pooling = nn.AdaptiveAvgPool2d((1,1))
+        self.fc1 = nn.Linear(2048, 1024)
+        self.fc2 = nn.Linear(1024, num_classes)
 
     def forward(self, x):
         x = self.model(x)
-        x = torch.squeeze(x)
+        x = self.pooling(x)
+        x = torch.flatten(x,1)
 
         x = self.fc1(x)
         x = F.relu(x)
