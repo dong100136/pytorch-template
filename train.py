@@ -30,7 +30,11 @@ def main(config):
     logger.info(model)
 
     # get function handles of loss and metrics
-    criterion = getattr(module_loss, config['loss'])
+    if 'type' in  config['loss']:
+        criterion = config.init_obj('loss',module_loss)
+    else:
+        criterion = getattr(module_loss, config['loss'])
+
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler

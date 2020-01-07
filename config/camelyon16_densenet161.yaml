@@ -1,8 +1,8 @@
-exp_name: CAMELYON16_ResNet
+exp_name: CAMELYON16_DenseNet
 workspace: /root/log
 n_gpu: 2
 model:
-  type: ResNetModel
+  type: DenseNetModel
   args: 
     num_classes: 2
 data_loader:
@@ -10,7 +10,7 @@ data_loader:
   args:
     train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
     valid_data_dir: /root/dataset/workspace/CAMELYON16_v2/valid
-    batch_size: 128
+    batch_size: 64
     shuffle: True
     num_workers: 4
     test_mode: false # this mode will use 16 data for validate the model

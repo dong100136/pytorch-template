@@ -1,4 +1,4 @@
-exp_name: CAMELYON16_ResNet
+exp_name: CAMELYON16_ResNet_focal_1
 workspace: /root/log
 n_gpu: 2
 model:
@@ -22,7 +22,10 @@ optimizer:
     lr: 0.00003
     weight_decay: 0
     amsgrad: true
-loss: nll_loss
+loss: 
+  type: FocalLoss
+  args:
+    gamma: 1
 metrics:
   - accuracy
 lr_scheduler:
