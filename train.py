@@ -3,7 +3,7 @@ import collections
 import torch
 import numpy as np
 import data_loader as module_dataloader
-from module import  losses as module_loss
+from module import losses as module_loss
 from module import metrics as module_metric
 from module import models as module_models
 import trainer as module_trainer
@@ -30,8 +30,8 @@ def main(config):
     logger.info(model)
 
     # get function handles of loss and metrics
-    if 'type' in  config['loss']:
-        criterion = config.init_obj('loss',module_loss)
+    if isinstance(config['loss'], dict):
+        criterion = config.init_obj('loss', module_loss)
     else:
         criterion = getattr(module_loss, config['loss'])
 

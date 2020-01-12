@@ -24,7 +24,11 @@ def main(config):
     logger.info(model)
 
     # get function handles of loss and metrics
-    loss_fn = getattr(module_loss, config['loss'])
+    if isinstance(config['loss'],dict):
+        loss_fn = config.init_obj('loss',module_loss)
+    else:
+        loss_fn = getattr(module_loss, config['loss'])
+        
     metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
     predict_hooks = [getattr(module_predict_hook, met['type']) for met in config['predict_hook']]

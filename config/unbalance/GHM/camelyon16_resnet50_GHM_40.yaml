@@ -1,0 +1,50 @@
+exp_name: CAMELYON16_ResNet_GHM_40
+workspace: /root/log
+n_gpu: 1
+model:
+  type: ResNetModel
+  args: 
+    num_classes: 2
+data_loader:
+  type: ImageFolderLoader
+  args:
+    train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
+    valid_data_dir: /root/dataset/workspace/CAMELYON16_v2/valid
+    batch_size: 128
+    shuffle: True
+    num_workers: 4
+    test_mode: False # this mode will use 16 data for validate the model
+    imgs_mean: [0.6600297, 0.4745953, 0.6561866]
+    imgs_std: [0.22620466, 0.2393456, 0.18473646]
+optimizer:
+  type: Adam
+  args:
+    lr: 0.00001 # 3e-5
+    weight_decay: 0
+    amsgrad: true
+loss: 
+  type: GHMC_Loss
+  args:
+    bins: 40
+    momentum: 0.6
+metrics:
+  - accuracy
+lr_scheduler:
+  type: StepLR
+  args:
+    step_size: 2
+    gamma: 0.5
+trainer:
+  type: BasicTrainer
+  args:
+    epochs: 50
+    save_dir: /root/logs/
+    save_period: 1
+    verbosity: 2
+    monitor: min val_loss
+    early_stop: 3
+    tensorboard: true
+    save_params_hist: false
+predict_hook:
+  - type: FROC
+

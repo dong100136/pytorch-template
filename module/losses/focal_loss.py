@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class FocalLoss(nn.Module):
     def __init__(self, gamma=0):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
-        self.nll_loss = torch.nn.NLLLoss()
 
     def forward(self, input, target):
-        logp = self.nll_loss(input, target)
+        logp = F.nll_loss(torch.log(input),target,reduction='none')
         p = torch.exp(-logp)
+
         loss = (1 - p) ** self.gamma * logp
         return loss.mean()

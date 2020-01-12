@@ -16,6 +16,7 @@ class ImageFolderLoader(DataLoader):
                  test_mode=False,
                  collate_fn=default_collate):
         self.batch_size = batch_size
+        self.train_data_dir = train_data_dir
         self.valid_data_dir = valid_data_dir
         self.collate_fn = collate_fn
         self.num_workers = num_workers
@@ -59,7 +60,7 @@ class ImageFolderLoader(DataLoader):
 
         if test_mode:
             print("using test mode in dataloader")
-            idx_full = idx_full[:16]
+            idx_full = idx_full[:self.batch_size]
 
         self.shuffle = False
         return SubsetRandomSampler(idx_full)
@@ -68,7 +69,8 @@ class ImageFolderLoader(DataLoader):
         if self.valid_data_dir is None:
             return None
         else:
-            dataset = torchvision.datasets.ImageFolder(root=self.valid_data_dir,
+            data_dir = self.valid_data_dir if not self.test_mode else self.train_data_dir
+            dataset = torchvision.datasets.ImageFolder(root=data_dir,
                                                        transform=torchvision.transforms.Compose([
                                                            torchvision.transforms.ToTensor(),
                                                            torchvision.transforms.Normalize(

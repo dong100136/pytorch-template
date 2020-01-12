@@ -1,0 +1,49 @@
+exp_name: CAMELYON16_DenseNet_weights_2_1
+workspace: /root/log
+n_gpu: 1
+model:
+  type: DenseNetModel
+  args: 
+    num_classes: 2
+data_loader:
+  type: ImageFolderLoader
+  args:
+    train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
+    valid_data_dir: /root/dataset/workspace/CAMELYON16_v2/valid
+    batch_size: 40
+    shuffle: True
+    num_workers: 4
+    test_mode: False # this mode will use 16 data for validate the model
+    imgs_mean: [0.6600297, 0.4745953, 0.6561866]
+    imgs_std: [0.22620466, 0.2393456, 0.18473646]
+optimizer:
+  type: Adam
+  args:
+    lr: 0.00003 # 3e-5
+    weight_decay: 0
+    amsgrad: true
+loss: 
+  type: LogLoss
+  args:
+    weights: [2, 1]
+metrics:
+  - accuracy
+lr_scheduler:
+  type: StepLR
+  args:
+    step_size: 2
+    gamma: 0.5
+trainer:
+  type: BasicTrainer
+  args:
+    epochs: 50
+    save_dir: /root/logs/
+    save_period: 1
+    verbosity: 2
+    monitor: min val_loss
+    early_stop: 3
+    tensorboard: true
+    save_params_hist: false
+predict_hook:
+  - type: FROC
+
