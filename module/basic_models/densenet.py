@@ -226,9 +226,6 @@ def _load_state_dict(model, model_url, progress):
 
     model_dict = model.state_dict()
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-    print(list(pretrained_dict.keys())[:10])
-    print("+++++")
-    print(list(model_dict.keys())[:10])
 
     model_dict.update(pretrained_dict)
     model.load_state_dict(model_dict)

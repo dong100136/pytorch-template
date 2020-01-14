@@ -3,13 +3,15 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc
 
 
-def FROC(target, predict, save_path="/tmp"):
+def froc(target, predict, save_path="/tmp"):
     '''
     predict : [N, 2] numpy array
     target : [N] numpy array
     '''
     fpr, tpr, thr = roc_curve(target, predict[:,1])
     auc_score = auc(fpr, tpr)
+
+    print("roc: %.5f"%auc_score)
 
     plt.figure(dpi=200)
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.4f)' % auc_score)

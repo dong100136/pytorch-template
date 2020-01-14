@@ -1,6 +1,6 @@
 exp_name: CAMELYON16_ResNet_weights_1_2
 workspace: /root/log
-n_gpu: 1
+n_gpu: 2
 model:
   type: ResNetModel
   args: 
@@ -8,9 +8,9 @@ model:
 data_loader:
   type: ImageFolderLoader
   args:
-    train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
-    valid_data_dir: /root/dataset/workspace/CAMELYON16_v2/valid
-    batch_size: 128
+    train_data_dir: /root/dataset/workspace/CAMELYON16_v3/train
+    valid_data_dir: /root/dataset/workspace/CAMELYON16_v3/valid
+    batch_size: 200
     shuffle: True
     num_workers: 4
     test_mode: False # this mode will use 16 data for validate the model
@@ -45,5 +45,6 @@ trainer:
     tensorboard: true
     save_params_hist: false
 predict_hook:
-  - type: FROC
+  - froc
+  - precision_recall
 

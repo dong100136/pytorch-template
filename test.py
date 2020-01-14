@@ -31,7 +31,7 @@ def main(config):
         
     metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
-    predict_hooks = [getattr(module_predict_hook, met['type']) for met in config['predict_hook']]
+    predict_hooks = [getattr(module_predict_hook, met) for met in config['predict_hook']]
 
     best_model_path = config.save_dir / "model_best.pth"
     if config.resume == None and best_model_path.exists():

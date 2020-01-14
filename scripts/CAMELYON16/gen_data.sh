@@ -1,7 +1,7 @@
-python3 extra/CAMELYON16/gen_data.py \
-~/dataset/CAMELYON16/testing \
-/root/dataset/workspace/CAMELYON16_v2/valid \
---random true
+# python3 extra/CAMELYON16/gen_data.py \
+# ~/dataset/CAMELYON16/testing \
+# /root/dataset/workspace/CAMELYON16_v3/valid \
+# --random true
 
 # python3 extra/CAMELYON16/gen_data.py \
 # ~/dataset/CAMELYON16/testing \
@@ -10,19 +10,19 @@ python3 extra/CAMELYON16/gen_data.py \
 
 # python3 extra/CAMELYON16/gen_data.py \
 # ~/dataset/CAMELYON16/training \
-# /root/dataset/workspace/CAMELYON16_v2/train \
+# /root/dataset/workspace/CAMELYON16_v3/train \
 # --random true
 
 
 # #----
 python3 extra/CAMELYON16/gen_patch.py \
-/root/dataset/workspace/CAMELYON16_v2/valid/normal_all_data.list \
-/root/dataset/workspace/CAMELYON16_v2/valid/normal
+/root/dataset/workspace/CAMELYON16_v3/valid/normal_all_data.list \
+/root/dataset/workspace/CAMELYON16_v3/valid/normal
 
 
 python3 extra/CAMELYON16/gen_patch.py \
-/root/dataset/workspace/CAMELYON16_v2/valid/tumor_all_data.list \
-/root/dataset/workspace/CAMELYON16_v2/valid/tumor
+/root/dataset/workspace/CAMELYON16_v3/valid/tumor_all_data.list \
+/root/dataset/workspace/CAMELYON16_v3/valid/tumor
 
 # #----
 # python3 extra/CAMELYON16/gen_patch.py \
@@ -34,10 +34,10 @@ python3 extra/CAMELYON16/gen_patch.py \
 # /root/dataset/workspace/CAMELYON16_v2/valid_wsi/tumor
 
 # #----
-# python3 extra/CAMELYON16/gen_patch.py \
-# /root/dataset/workspace/CAMELYON16_v2/train/normal_all_data.list \
-# /root/dataset/workspace/CAMELYON16_v2/train/normal
+python3 extra/CAMELYON16/gen_patch.py \
+/root/dataset/workspace/CAMELYON16_v3/train/normal_all_data.list \
+/root/dataset/workspace/CAMELYON16_v3/train/normal
 
-# python3 extra/CAMELYON16/gen_patch.py \
-# /root/dataset/workspace/CAMELYON16_v2/train/tumor_all_data.list \
-# /root/dataset/workspace/CAMELYON16_v2/train/tumor
+python3 extra/CAMELYON16/gen_patch.py \
+/root/dataset/workspace/CAMELYON16_v3/train/tumor_all_data.list \
+/root/dataset/workspace/CAMELYON16_v3/train/tumor

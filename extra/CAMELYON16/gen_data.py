@@ -163,7 +163,7 @@ def main():
             wsi.get_patch_point(wsi.tumor_mask_path, wsi.tumor_data_list, 1000, random=args.random)
 
         wsi.gen_non_tumor_mask()
-        wsi.get_patch_point(wsi.non_tumor_mask_path, wsi.normal_data_list, 400, random=args.random)
+        wsi.get_patch_point(wsi.non_tumor_mask_path, wsi.normal_data_list, 1500, random=args.random)
 
 
 if __name__ == "__main__":
