@@ -3,16 +3,22 @@ import torch
 from torchvision.utils import make_grid
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
+from ..registry import TRAINER
 
-
+@TRAINER.register('BasicTrainer')
 class BasicTrainer(BaseTrainer):
     """
     Trainer class
     """
 
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader,
-                 valid_data_loader=None, lr_scheduler=None, len_epoch=None, **kwargs):
-        super().__init__(model, criterion, metric_ftns, optimizer, config)
+                 valid_data_loader=None,
+                 lr_scheduler=None, 
+                 len_epoch=None,
+                 save_params_hist = False,
+                 logger=None,
+                  **kwargs):
+        super().__init__(model, criterion, metric_ftns, optimizer, config, logger)
         self.config = config
         self.data_loader = data_loader
 
@@ -28,7 +34,7 @@ class BasicTrainer(BaseTrainer):
         self.do_validation = self.valid_data_loader is not None
         self.lr_scheduler = lr_scheduler
         self.log_step = int(np.sqrt(data_loader.batch_size))
-        self.save_params_hist = self.config['trainer']['args']['save_params_hist']
+        self.save_params_hist = save_params_hist
 
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)

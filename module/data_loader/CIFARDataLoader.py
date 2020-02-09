@@ -1,5 +1,6 @@
 from torchvision import datasets, transforms
 from base import BaseDataLoader
+from ..registry import DATA_LOADER
 
 mean = {
 'cifar10': (0.4914, 0.4822, 0.4465),
@@ -11,7 +12,7 @@ std = {
 'cifar100': (0.2675, 0.2565, 0.2761),
 }
 
-
+@DATA_LOADER.register("CIFAR100DataLoader")
 class CIFAR100DataLoader(BaseDataLoader):
     """
     MNIST data loading demo using BaseDataLoader
@@ -25,7 +26,7 @@ class CIFAR100DataLoader(BaseDataLoader):
         self.dataset = datasets.CIFAR100(self.data_dir, train=training, download=True, transform=trsfm)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
-
+@DATA_LOADER.register("CIFAR10DataLoader")
 class CIFAR10DataLoader(BaseDataLoader):
     """
     MNIST data loading demo using BaseDataLoader

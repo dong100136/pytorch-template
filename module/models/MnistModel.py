@@ -1,8 +1,9 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from base import BaseModel
+from ..registry import ARCH
 
-
+@ARCH.register("MnistModel")
 class MnistModel(BaseModel):
     def __init__(self, num_classes=10):
         super().__init__()

@@ -1,7 +1,10 @@
 import torch
 import torch.nn.functional as F
+from ..registry import LOSS
 
+LOSS.register('nll_loss', F.nll_loss)
 
+@LOSS.register('logloss')
 def logloss(output, target):
     return F.nll_loss(torch.log(output), target)
 

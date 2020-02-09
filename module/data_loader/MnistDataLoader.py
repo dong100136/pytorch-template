@@ -1,7 +1,8 @@
 from torchvision import datasets, transforms
 from base import BaseDataLoader
+from ..registry import DATA_LOADER
 
-
+@DATA_LOADER.register("MnistDataLoader")
 class MnistDataLoader(BaseDataLoader):
     """
     MNIST data loading demo using BaseDataLoader

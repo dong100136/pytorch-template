@@ -22,6 +22,7 @@ class Registry(dict):
     Access of module is just like using a dictionary, eg:
         f = some_registry["foo_modeul"]
     '''
+
     def __init__(self, *args, **kwargs):
         super(Registry, self).__init__(*args, **kwargs)
 
@@ -37,3 +38,9 @@ class Registry(dict):
             return fn
 
         return register_fn
+
+    def __getitem__(self, key):
+        if key in self:
+            return super().__getitem__(key)
+        else:
+            raise Exception("%s is not registered in this scope" % key)

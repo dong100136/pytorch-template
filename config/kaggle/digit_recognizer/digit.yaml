@@ -1,0 +1,58 @@
+exp_name: Kaggle_Digit_Recognizer
+version: 2.0
+workspace: /root/trash/log
+n_gpu: 2
+arch:
+  type: resnet13_cifar10
+  args: 
+    num_classes: 10
+dataloader:
+  type: DigitDataLoader
+  args:
+    csv_path: /root/dataset/digit-recognizer/train.csv
+    batch_size: 64
+    validation_split: 0.2
+optimizer:
+  type: Adam
+  args:
+    lr: 0.001
+    weight_decay: 0
+    amsgrad: true
+loss: logloss
+metrics:
+  - accuracy
+lr_scheduler:
+  type: StepLR
+  args:
+    step_size: 10
+    gamma: 0.5
+trainer:
+  type: BasicTrainer
+  args:
+    epochs: 50
+    save_period: 1
+    verbosity: 2
+    monitor: min val_loss
+    early_stop: 3
+    tensorboard: true
+    save_params_hist: false
+    n_gpu: 2
+
+# prediction
+predict_dataloader:
+  type: DigitDataLoader
+  args:
+    csv_path: /root/dataset/digit-recognizer/test.csv
+    batch_size: 64
+    training: false
+predict_hook:
+  - func: plot_result
+    args:
+      save_path: /root/trash/log/predict.png
+      nrows: 10
+      ncols: 10
+      shuffle: false
+  - func: save_csv
+    args:
+      save_path: /root/trash/log/submission.csv
+

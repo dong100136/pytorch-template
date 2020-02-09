@@ -1,6 +1,7 @@
 import torch
+from ..registry import METRICS
 
-
+@METRICS.register("accuracy")
 def accuracy(output, target):
     with torch.no_grad():
         pred = torch.argmax(output, dim=1)

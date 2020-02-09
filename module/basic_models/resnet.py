@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from .utils import load_state_dict_from_url
+from ..registry import ARCH
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -120,14 +121,14 @@ class Bottleneck(nn.Module):
 class ResNet_cifar10(nn.Module):
     def __init__(self, block, layers, num_classes=10, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=Norm, header=False):
+                 norm_layer=None, header=True):
 
         super(ResNet_cifar10, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 64
+        self.inplanes = 1
         self.dilation = 1
         self.header = header
 
@@ -141,8 +142,8 @@ class ResNet_cifar10(nn.Module):
         self.groups = groups
         self.base_width = width_per_group
         self.layer1 = self._make_layer(block, 16, layers[0])
-        self.layer2 = self._make_layer(block, 32, layers[1])
-        self.layer3 = self._make_layer(block, 64, layers[2])
+        self.layer2 = self._make_layer(block, 32, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 64, layers[2], stride=2)
 
         if header:
             self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -199,6 +200,7 @@ class ResNet_cifar10(nn.Module):
             x = self.avgpool(x)
             x = torch.flatten(x, 1)
             x = self.fc(x)
+            x = nn.functional.softmax(x, dim=-1)
 
         return x
 
@@ -207,7 +209,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, header=False):
+                 norm_layer=None, header=True):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -300,6 +302,7 @@ class ResNet(nn.Module):
             x = self.avgpool(x)
             x = torch.flatten(x, 1)
             x = self.fc(x)
+            x = nn.functional.softmax(x, dim=-1)
 
         return x
 
@@ -321,14 +324,16 @@ def _resnet(arch, block, layers, pretrained, progress, **kwargs):
     return model
 
 
+@ARCH.register("resnet13_cifar10")
 def resnet13_cifar10(progress=True, **kwargs):
     '''
     resnet for cifar10, remove downsampling and layer4
     '''
-    model = Resnet(BasicBlock, [2, 2, 2], progress, **kwargs)
+    print(kwargs)
+    model = ResNet_cifar10(BasicBlock, [2, 2, 2], **kwargs)
     return model
 
-
+@ARCH.register("resnet18")
 def resnet18(pretrained=False, progress=True, **kwargs):
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_

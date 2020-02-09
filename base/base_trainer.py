@@ -3,6 +3,8 @@ from abc import abstractmethod
 from numpy import inf
 from logger import TensorboardWriter
 import os
+from pathlib import Path
+import logging
 
 
 class BaseTrainer:
@@ -10,12 +12,13 @@ class BaseTrainer:
     Base class for all trainers
     """
 
-    def __init__(self, model, criterion, metric_ftns, optimizer, config, **kwargs):
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, logger, **kwargs):
         self.config = config
-        self.logger = config.get_logger('trainer', config['trainer']['args']['verbosity'])
+        self.logger = logging.getLogger()
+        cfg_trainer = config['trainer']['args']
 
         # setup GPU device if available, move model into configured device
-        self.device, device_ids = self._prepare_device(config['n_gpu'])
+        self.device, device_ids = self._prepare_device(cfg_trainer['n_gpu'])
         self.model = model.to(self.device)
 
         if len(device_ids) > 1:
@@ -25,7 +28,6 @@ class BaseTrainer:
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
 
-        cfg_trainer = config['trainer']['args']
 
         self.epochs = cfg_trainer['epochs']
         self.save_period = cfg_trainer['save_period']
@@ -44,13 +46,16 @@ class BaseTrainer:
 
         self.start_epoch = 1
 
-        self.checkpoint_dir = config.save_dir
+        self.checkpoint_dir = Path(cfg_trainer['checkerpoint_dir'])
+        self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.save_last_models = 5
 
         # setup visualization writer instance
-        self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
+        self.writer = TensorboardWriter(cfg_trainer['tensorboard_dir'],
+                                        self.logger,
+                                        cfg_trainer['tensorboard'])
 
-        if config.resume is not None:
+        if cfg_trainer['resume'] is not None:
             self._resume_checkpoint(config.resume)
 
         self.load_last_checkpoint()
@@ -59,15 +64,15 @@ class BaseTrainer:
         max_epoch = -1
         max_epoch_pth_path = None
         # find last checkpoint from model_dir
-        for checkpoint_pth  in self.checkpoint_dir.glob("*.pth"):
+        for checkpoint_pth in self.checkpoint_dir.glob("*.pth"):
             pth_name = checkpoint_pth.stem
-            if pth_name.find('epoch') >=0:
+            if pth_name.find('epoch') >= 0:
                 epoch_num = int(pth_name.split("epoch")[-1])
-                if epoch_num>max_epoch:
+                if epoch_num > max_epoch:
                     max_epoch = epoch_num
                     max_epoch_pth_path = checkpoint_pth
-        
-        if max_epoch>0:
+
+        if max_epoch > 0:
             self.logger.info(
                 "find latest checkpoint {} and load it.".format(max_epoch_pth_path.stem))
             self._resume_checkpoint(max_epoch_pth_path)
@@ -127,7 +132,7 @@ class BaseTrainer:
 
             if epoch % self.save_period == 0:
                 self._save_checkpoint(epoch, save_best=best)
-        
+
         self.logger.info("Congratulation, the training is finish!")
 
     def _prepare_device(self, n_gpu_use):
@@ -195,7 +200,7 @@ class BaseTrainer:
         self.mnt_best = checkpoint['monitor_best']
 
         # load architecture params from checkpoint.
-        if checkpoint['config']['model']['type'] != self.config['model']['type']:
+        if checkpoint['config']['arch']['type'] != self.config['arch']['type']:
             self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
                                 "checkpoint. This may yield an exception while state_dict is being loaded.")
         self.model.load_state_dict(checkpoint['state_dict'])
