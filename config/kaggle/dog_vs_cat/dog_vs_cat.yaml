@@ -3,7 +3,7 @@ version: 2.0
 workspace: /root/trash/log
 n_gpu: 2
 arch:
-  type: resnet50
+  type: VanillaModel
   args:
     num_classes: 2
     pretrained: True
