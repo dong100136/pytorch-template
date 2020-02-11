@@ -55,7 +55,9 @@ class CSVDataLoader(DataLoader):
 
         self.batch_idx = 0
 
-        self.dataset = CSVDataSet(train_csv, transforms=transforms)
+        self.dataset = CSVDataSet(train_csv, 
+                                  transforms=transforms,
+                                  test_mode= self._args['test_mode'])
         self.n_samples = len(self.dataset)
         print("get %d data for train_data" % (self.n_samples))
 
@@ -91,7 +93,8 @@ class CSVDataLoader(DataLoader):
     def split_validation(self):
         data_csv = self._args['valid_csv']
         transforms = self.__init_transformer(False)
-        dataset = CSVDataSet(data_csv, transforms=transforms)
+        dataset = CSVDataSet(data_csv, transforms=transforms,
+                             test_mode= self._args['test_mode'])
         print("get %d data for valid_data" % (len(dataset)))
 
         init_kwargs = {
@@ -108,7 +111,7 @@ class CSVDataLoader(DataLoader):
 class CSVDataSet(Dataset):
     # 初始化，定义数据内容和标签
     def __init__(self, csv_data, label_col='label', img_col='img',
-                 transforms=None, test_model=False):
+                 transforms=None, test_mode=False):
         self.csv_data = Path(csv_data)
         self.base_path = self.csv_data.parent
 
@@ -122,6 +125,12 @@ class CSVDataSet(Dataset):
         self.imgs = [str(self.base_path / x) for x in self.data[img_col]]
         self.n_samples = len(self.imgs)
         self.transforms = transforms
+
+        if test_mode:
+            self.n_samples = min(300,self.n_samples)
+            self.imgs = self.imgs[:self.n_samples]
+            if self.have_label:
+                self.labels = self.labels[:self.n_samples]
 
     def __len__(self):
         return self.n_samples

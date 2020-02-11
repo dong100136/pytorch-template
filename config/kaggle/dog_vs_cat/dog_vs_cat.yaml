@@ -12,11 +12,10 @@ dataloader:
   args:
     train_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/train.csv
     valid_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/valid.csv
-    batch_size: 16
+    batch_size: 32
     training: True
-    num_workers: 4
+    num_workers: 16
     test_mode: False
-    split: 0.2
     resize: [320, 320]
     data_augement: True
 optimizer:

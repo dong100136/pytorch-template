@@ -29,7 +29,7 @@ class VanillaModel(BaseModel):
 
     def forward(self, x):
         x1 = self.resnet50(x)
-        x2,_ = self.inceptionV3(x)
+        x2 = self.inceptionV3(x)
         x3 = self.xception(x)
 
 

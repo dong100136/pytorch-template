@@ -198,15 +198,16 @@ class Inception3(nn.Module):
             return x
 
     def forward(self, x):
-        x = self._transform_input(x)
+        #  x = self._transform_input(x)
         x, aux = self._forward(x)
-        aux_defined = self.training and self.aux_logits
-        if torch.jit.is_scripting():
-            if not aux_defined:
-                warnings.warn("Scripted Inception3 always returns Inception3 Tuple")
-            return InceptionOutputs(x, aux)
-        else:
-            return self.eager_outputs(x, aux)
+        return x
+        #  aux_defined = self.training and self.aux_logits
+        #  if torch.jit.is_scripting():
+            #  if not aux_defined:
+                #  warnings.warn("Scripted Inception3 always returns Inception3 Tuple")
+            #  return InceptionOutputs(x, aux)
+        #  else:
+            #  return self.eager_outputs(x, aux)
 
 
 class InceptionA(nn.Module):
