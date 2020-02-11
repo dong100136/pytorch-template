@@ -206,24 +206,24 @@ class Xception(nn.Module):
     
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
-        x = self.last_linear(x)
+        x = self.fc(x)
         return x
 
     def forward(self, input):
         x = self.features(input)
         if self.header:
+            print("="*50,self.header)
             x = self.logits(x)
         return x
 
 
 def xception(num_classes=1000, pretrained=False, header=True):
-    model = Xception(num_classes=num_classes)
+    model = Xception(num_classes=num_classes, header=header)
     if pretrained:
-        settings = pretrained_settings['xception'][pretrained]
+        settings = pretrained_settings['xception']['imagenet']
         assert num_classes == settings['num_classes'], \
             "num_classes should be {}, but is {}".format(settings['num_classes'], num_classes)
 
-        model = Xception(num_classes=num_classes, header=True)
 
         # loader pretrained model
         print("loading pretrained model")
@@ -239,7 +239,4 @@ def xception(num_classes=1000, pretrained=False, header=True):
         model.mean = settings['mean']
         model.std = settings['std']
 
-    # TODO: ugly
-    model.last_linear = model.fc
-    del model.fc
     return model

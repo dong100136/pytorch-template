@@ -1,4 +1,4 @@
-exp_name: Kaggle_Dog_vs_Cat_v3_320
+exp_name: Kaggle_Dog_vs_Cat_v3_vanilla
 version: 2.0
 workspace: /root/trash/log
 n_gpu: 2
@@ -12,7 +12,7 @@ dataloader:
   args:
     train_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/train.csv
     valid_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/valid.csv
-    batch_size: 64
+    batch_size: 16
     training: True
     num_workers: 4
     test_mode: False
