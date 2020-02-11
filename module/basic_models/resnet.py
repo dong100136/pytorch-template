@@ -243,7 +243,11 @@ class ResNet(nn.Module):
 
         if header:
             self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Linear(512 * block.expansion, num_classes)
+            self.classifier = torch.nn.Sequential(
+                nn.Linear(512*block.expansion, num_classes),
+                nn.Softmax(dim=-1)
+            )
+     
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -301,8 +305,8 @@ class ResNet(nn.Module):
         if self.header:
             x = self.avgpool(x)
             x = torch.flatten(x, 1)
-            x = self.fc(x)
-            x = nn.functional.softmax(x, dim=-1)
+
+            x = self.classifier(x)
 
         return x
 
@@ -345,7 +349,7 @@ def resnet18(pretrained=False, progress=True, **kwargs):
     return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress,
                    **kwargs)
 
-
+@ARCH.register("resnet34")
 def resnet34(pretrained=False, progress=True, **kwargs):
     r"""ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
@@ -357,7 +361,7 @@ def resnet34(pretrained=False, progress=True, **kwargs):
     return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress,
                    **kwargs)
 
-
+@ARCH.register("resnet50")
 def resnet50(pretrained=False, progress=True, **kwargs):
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_

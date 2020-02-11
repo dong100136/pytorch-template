@@ -3,6 +3,7 @@ import logging
 import os
 from functools import partial
 from inspect import isfunction
+from pathlib import Path
 
 
 class ConfigParser:
@@ -18,16 +19,18 @@ class ConfigParser:
         else:
             self.parser = self._init_default_config_parser(config, logger)
 
-        self.config['trainer']['args']['checkerpoint_dir'] = os.path.join(
-            self.config['workspace'], 'model', self.config['exp_name']
-        )
-        self.config['trainer']['args']['tensorboard_dir'] = os.path.join(
-            self.config['workspace'], 'log', self.config['exp_name']
-        )
-        self.config['prediction_path'] = os.path.join(
-            self.config['workspace'], 'prediction', self.config['exp_name'],
-            "prediction.csv"
-        )
+        self.config['trainer']['args']['checkerpoint_dir'] = Path(
+            self.config['workspace']) / 'model' / self.config['exp_name']
+
+        self.config['trainer']['args']['tensorboard_dir'] = Path(
+            self.config['workspace']) / 'log' / self.config['exp_name']
+
+        self.config['prediction_path'] = Path(
+            self.config['workspace']) / 'prediction' / self.config['exp_name']
+
+        self.config['trainer']['args']['checkerpoint_dir'].mkdir(parents=True, exist_ok=True)
+        self.config['trainer']['args']['tensorboard_dir'].mkdir(parents=True, exist_ok=True)
+        self.config['prediction_path'].mkdir(parents=True, exist_ok=True)
 
     def get_trainer(self, resume=True):
         return self.parser.get_trainer(resume)
@@ -38,8 +41,15 @@ class ConfigParser:
     def init_model(self):
         return self.parser.init_model()
 
+    def init_metrics(self):
+        if self.config['metrics'] and len(self.config['metrics'])>0:
+            return self.parser.init_metrics()
+        else:
+            return []
+
+
     def get_hooks(self, hook_names):
-        if self.config[hook_names] and len(self.config[hook_names])>0:
+        if hook_names in self.config and self.config[hook_names] and len(self.config[hook_names]) > 0:
             return self.parser.get_hooks(hook_names)
         else:
             return []
@@ -47,7 +57,7 @@ class ConfigParser:
     def _init_default_config_parser(self, config, logger):
         raise NotImplementedError
 
-    def get_logger(self, name, verbosity=logging.NOTSET):
+    def get_logger(self, name, verbosity=logging.DEBUG):
         logging.basicConfig(level=verbosity)
         logger = logging.getLogger(name)
         return logger
@@ -102,6 +112,12 @@ class ConfigParserV2:
         self.logger.info(model)
         return model
 
+    def init_metrics(self):
+        return [
+            self._init_obj(METRICS, metric)
+            for metric in self.config['metrics']
+        ]
+
     def init_dataloader(self, dataloader_name):
         dataloader = self._init_obj(DATA_LOADER, self.config[dataloader_name])
         return dataloader
@@ -118,7 +134,7 @@ class ConfigParserV2:
             if is_function:
                 module_name = obj['func']
             else:
-                module_name = obj['type'] 
+                module_name = obj['type']
 
             module_args = dict(obj['args'])
 
@@ -128,10 +144,10 @@ class ConfigParserV2:
             obj = registry[module_name]
             if is_function:
                 return partial(
-                    obj, *args,**module_args
+                    obj, *args, **module_args
                 )
             else:
-                return obj(*args,**module_args)
+                return obj(*args, **module_args)
             # return registry[module_name](*args,**module_args)
         elif isinstance(obj, str):
             return registry[obj]

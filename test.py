@@ -1,47 +1,39 @@
 import argparse
 import torch
 from tqdm import tqdm
-import data_loader as module_dataloader
-from module import losses as module_loss
-from module import metrics as module_metric
-from module import models as module_models
-from module import predict_hook as module_predict_hook
-import trainer as module_trainer
 import numpy as np
+import yaml
+from yaml import FullLoader as Loader
+from yaml import Dumper as Dumper
+import pretty_errors
+import logging
+from pathlib import Path
+import os
 
-from parse_config import ConfigParser
+from utils.config_parser import ConfigParser
 
 
-def main(config):
-    logger = config.get_logger('test')
+def main(config, resume_model=None, device=None):
+    logger = logging.getLogger('valid')
 
+    configParser = ConfigParser(config)
     # setup data_loader instances
-    data_loader = config.init_obj('data_loader', module_dataloader)
-    data_loader = data_loader.split_validation()
+    data_loader = configParser.init_dataloader("valid_dataloader")
+    model = configParser.init_model()
 
-    # build model architecture
-    model = config.init_obj('model', module_models)
-    logger.info(model)
+    predict_hooks = configParser.get_hooks('valid_hook')
+    metrics = configParser.init_metrics()
 
-    # get function handles of loss and metrics
-    if isinstance(config['loss'],dict):
-        loss_fn = config.init_obj('loss',module_loss)
-    else:
-        loss_fn = getattr(module_loss, config['loss'])
-        
-    metric_fns = [getattr(module_metric, met) for met in config['metrics']]
-
-    predict_hooks = [getattr(module_predict_hook, met) for met in config['predict_hook']]
-
-    best_model_path = config.save_dir / "model_best.pth"
-    if config.resume == None and best_model_path.exists():
+    best_model_path = configParser['trainer']['args']['checkerpoint_dir'] / "model_best.pth"
+    best_model_path = Path(best_model_path)
+    if resume_model == None and best_model_path.exists():
         print("find best model %s" % best_model_path)
-        config.resume = best_model_path
+        resume_model = best_model_path
 
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
-    checkpoint = torch.load(config.resume)
+    logger.info('Loading checkpoint: {} ...'.format(resume_model))
+    checkpoint = torch.load(resume_model)
     state_dict = checkpoint['state_dict']
-    if config['n_gpu'] > 1:
+    if configParser['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
     model.load_state_dict(state_dict)
 
@@ -50,51 +42,57 @@ def main(config):
     model = model.to(device)
     model.eval()
 
-    total_loss = 0.0
-    total_metrics = torch.zeros(len(metric_fns))
-
-    preds = np.zeros((0, 2))
-    targets = np.zeros((0, 1))
+    preds = None
+    targets = None
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
-            data, target = data.to(device), target.to(device)
+            target = target.to(device)
+            data = data.to(device)
             output = model(data)
 
-            preds = np.vstack([preds, output.cpu().detach().numpy()])
-            targets = np.vstack([targets, target.view((-1, 1)).cpu().detach().numpy()])
+            output =  output.cpu().detach()
+            target = target.cpu().detach()
 
-            #
-            # save sample images, or do something with output here
-            #
-
-            # computing loss, metrics on test set
-            loss = loss_fn(output, target)
-            batch_size = data.shape[0]
-            total_loss += loss.item() * batch_size
-            for i, metric in enumerate(metric_fns):
-                total_metrics[i] += metric(output, target) * batch_size
+            if preds is None:
+                preds = output
+                targets = target
+            else:
+                preds = torch.cat([preds, output],dim=0)
+                targets = torch.cat([targets,target],dim=0)
 
     n_samples = len(data_loader.sampler)
-    log = {'loss': total_loss / n_samples}
-    log.update({
-        met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
-    })
-    logger.info(log)
 
     targets = np.squeeze(targets)
+    logger.info("="*50)
+    logger.info("= support\t:%d"%(targets.shape[0]))
+    for metric in metrics:
+        score = metric(output=preds,target=targets)
+        logger.info("= %s\t:%f"%(metric.__name__, score))
+
+    logger.info("="*50)
 
     for hook in predict_hooks:
-        hook(targets, preds, config.save_dir)
+        hook(
+            target = targets,
+            predict = preds,
+            workspace = configParser['prediction_path']
+        )
 
 
 if __name__ == '__main__':
-    args = argparse.ArgumentParser(description='PyTorch Template')
-    args.add_argument('-c', '--config', default=None, type=str,
-                      help='config file path (default: None)')
-    args.add_argument('-r', '--resume', default=None, type=str,
-                      help='path to latest checkpoint (default: None)')
-    args.add_argument('-d', '--device', default=None, type=str,
-                      help='indices of GPUs to enable (default: all)')
+    parser = argparse.ArgumentParser(description='PyTorch Template')
+    parser.add_argument('-c', '--config', default=None, type=str,
+                        help='config file path (default: None)')
+    parser.add_argument('-r', '--resume', default=None, type=str,
+                        help='path to latest checkpoint (default: None)')
+    parser.add_argument('-d', '--device', default=None, type=str,
+                        help='indices of GPUs to enable (default: all)')
 
-    config = ConfigParser.from_args(args)
-    main(config)
+    args = parser.parse_args()
+
+    if args.device:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+
+    with open(args.config, 'r') as f:
+        config = yaml.load(f, Loader=Loader)
+    main(config, args.resume, args.device)

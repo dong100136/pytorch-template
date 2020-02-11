@@ -22,8 +22,9 @@ def main(config, resume_model=None, device=None):
     model = configParser.init_model()
 
     predict_hooks = configParser.get_hooks('predict_hook')
+    metrics = configParser.init_metrics()
 
-    best_model_path = configParser['trainer']['args']['checkerpoint_dir'] + "/model_best.pth"
+    best_model_path = configParser['trainer']['args']['checkerpoint_dir'] / "model_best.pth"
     best_model_path = Path(best_model_path)
     if resume_model == None and best_model_path.exists():
         print("find best model %s" % best_model_path)
@@ -51,21 +52,19 @@ def main(config, resume_model=None, device=None):
             output = model(data)
 
             output =  output.cpu().detach().numpy()
-            # data = data.cpu().detach().numpy()
-            # if not isinstance(preds,np.ndarray):
-            #     preds = output
-            #     input_data = data
-            # else:
-            #     preds = np.vstack([preds, output])
-            #     input_data = np.vstack([input_data, data])
+            if not isinstance(preds,np.ndarray):
+                preds = output
+            else:
+                preds = np.vstack([preds, output])
 
-    # n_samples = len(data_loader.sampler)
+    n_samples = len(data_loader.sampler)
 
-    # for hook in predict_hooks:
-    #     hook(
-    #         input_data = input_data,
-    #         predict = preds
-    #     )
+    for hook in predict_hooks:
+        hook(
+            dataset = data_loader.dataset,
+            predict = preds,
+            workspace = configParser['prediction_path']
+        )
 
 
 if __name__ == '__main__':
@@ -79,7 +78,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+    if args.device:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     with open(args.config, 'r') as f:
         config = yaml.load(f, Loader=Loader)

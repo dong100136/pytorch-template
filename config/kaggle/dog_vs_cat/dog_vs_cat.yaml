@@ -1,66 +1,82 @@
-exp_name: Kaggle_Dog_vs_Cat
+exp_name: Kaggle_Dog_vs_Cat_v3_320
 version: 2.0
 workspace: /root/trash/log
-n_gpu: 1
+n_gpu: 2
 arch:
-  type: resnet18
-  args: 
-    num_classes: 10
-dataloader:
-  type: ImageFolderLoader
+  type: resnet50
   args:
-      train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
-      batch_size: 128
-      shuffle: True
-      num_workers: 4
-      test_mode: false # this mode will use 16 data for validate the model
-      imgs_mean: [0.485, 0.456, 0.406]
-      imgs_std: [0.229, 0.224, 0.225]
+    num_classes: 2
+    pretrained: True
+dataloader:
+  type: CSVDataLoader
+  args:
+    train_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/train.csv
+    valid_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/valid.csv
+    batch_size: 64
+    training: True
+    num_workers: 4
+    test_mode: False
+    split: 0.2
+    resize: [320, 320]
+    data_augement: True
 optimizer:
   type: Adam
   args:
     lr: 0.001
-    weight_decay: 0
-    amsgrad: true
+    weight_decay: 0.003
+    amsgrad: True
 loss: logloss
 metrics:
   - accuracy
+  - logloss
 lr_scheduler:
   type: StepLR
   args:
-    step_size: 2
+    step_size: 5
     gamma: 0.5
 trainer:
   type: BasicTrainer
   args:
-    epochs: 50
+    epochs: 100
     save_period: 1
     verbosity: 2
     monitor: min val_loss
-    early_stop: 3
-    tensorboard: true
-    save_params_hist: false
-    n_gpu: 1
+    early_stop: 5
+    tensorboard: True
+    save_params_hist: False
+    n_gpu: 2
+
+valid_dataloader:
+  type: CSVDataLoader
+  args:
+    train_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/valid.csv
+    batch_size: 64
+    training: False
+    num_workers: 4
+    test_mode: False
+    resize: [320, 320]
 
 # prediction
 predict_dataloader:
-  type: ImageFolderLoader
+  type: CSVDataLoader
   args:
-    train_data_dir: /root/dataset/workspace/CAMELYON16_v2/train
+    train_csv: /root/dataset/dogs-vs-cats-redux-kernels-edition/test.csv
     batch_size: 64
-    shuffle: True
+    training: False
     num_workers: 4
-    test_mode: false # this mode will use 16 data for validate the model
-    imgs_mean: [0.485, 0.456, 0.406]
-    imgs_std: [0.229, 0.224, 0.225]
+    test_mode: False
+    resize: [320, 320]
 predict_hook:
   - func: plot_result
     args:
-      save_path: /root/trash/log/predict.png
-      nrows: 10
-      ncols: 10
-      shuffle: false
+      save_path: predict.png
+      nrows: 5
+      ncols: 5
+      shuffle: False
+      label_map:
+        0: cat
+        1: dog
   - func: save_csv
     args:
-      save_path: /root/trash/log/submission.csv
-
+      dim: 1
+      save_path: submission.csv

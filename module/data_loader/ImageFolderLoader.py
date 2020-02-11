@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.sampler import SubsetRandomSampler
 from ..registry import DATA_LOADER
+from collections import namedtuple
+
 
 @DATA_LOADER.register("ImageFolderLoader")
 class ImageFolderLoader(DataLoader):
@@ -23,112 +25,105 @@ class ImageFolderLoader(DataLoader):
                 imgs_std: [0.22620466, 0.2393456, 0.18473646]
         ]
     """
+    _args = {
+        "valid_data_dir": None,
+        "batch_size": 16,
+        "num_workers": 1,
+        "imgs_mean": (0.485, 0.456, 0.406),  # imagenet
+        "imgs_std": (0.229, 0.224, 0.225),  # imagenet
+        "training": True,
+        "split": 0,
+        "test_mode": False,
+        "collate_fn": default_collate,
+        "resize": None
+    }
 
-    def __init__(self, train_data_dir, 
-                 batch_size, num_workers,
-                 imgs_mean, imgs_std, shuffle,
-                 valid_data_dir = None,
-                 split=0.2,
-                 size=(224,224),
-                 test_mode=False,
-                 collate_fn=default_collate):
-        self.batch_size = batch_size
-        self.train_data_dir = train_data_dir
-        self.valid_data_dir = valid_data_dir
-        self.collate_fn = collate_fn
-        self.num_workers = num_workers
-        self.test_mode = test_mode
-        self.shuffle = shuffle
-        self.size = size
-        self.split = split
+    def __init__(self, train_data_dir, training, *args, **kwargs):
+        self._args.update(kwargs)
+        self._args['training'] = training
 
         self.batch_idx = 0
+        transform_ftn = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(
+                mean=self._args['imgs_mean'],
+                std=self._args['imgs_std']
+            )
+        ]
+        if self._args['resize']:
+            transform_ftn.insert(0,torchvision.transforms.Resize(self._args['resize']))
 
-        self.imgs_mean = imgs_mean
-        self.imgs_std = imgs_std
+        self.tarnsforms = torchvision.transforms.Compose(transform_ftn)
 
-        dataset = torchvision.datasets.ImageFolder(root=train_data_dir,
-                                                   transform=torchvision.transforms.Compose([
-                                                    #    torchvision.transforms.Resize(size, interpolation=2),
-                                                       torchvision.transforms.ToTensor(),
-                                                       torchvision.transforms.Normalize(
-                                                           mean=imgs_mean,
-                                                           std=imgs_std
-                                                       )
-                                                   ]))
+        self.dataset = torchvision.datasets.ImageFolder(
+            root=train_data_dir,
+            transform=self.tarnsforms)
+        self.n_samples = len(self.dataset)
 
-        print("get %d data for train_data" % (len(dataset)))
+        print("get %d data for train_data" % (self.n_samples))
 
-        train_sampler,valid_sampler = self.__gen_sampler(dataset, test_mode)
-        self.valid_sampler = valid_sampler
+        self.train_sampler, self.valid_sampler = self.__gen_sampler(self.dataset)
 
         self.init_kwargs = {
-            'dataset': dataset,
-            'batch_size': batch_size,
-            'shuffle': self.shuffle,
-            'sampler': train_sampler,
-            'collate_fn': collate_fn,
-            'num_workers': num_workers,
+            'dataset': self.dataset,
+            'batch_size': self._args['batch_size'],
+            'sampler': self.train_sampler,
+            'collate_fn': self._args['collate_fn'],
+            'num_workers': self._args['num_workers'],
             'pin_memory': True
         }
         super().__init__(**self.init_kwargs)
 
-    def __gen_sampler(self, dataset, test_mode=False):
-        n_samples = len(dataset)
-        self.n_samples = len(dataset)
+    def __gen_sampler(self, dataset):
+        idx_full = np.arange(self.n_samples)
 
-        idx_full = np.arange(n_samples)
-
-        if self.shuffle:
+        if self._args['training']:
+            self.logger.info("using shuffled dataset")
             np.random.seed(0)
             np.random.shuffle(idx_full)
 
-        if test_mode:
+        if self._args['test_mode']:
             print("using test mode in dataloader")
-            idx_full = idx_full[:self.batch_size]
+            idx_full = idx_full[:100 * self._args['batch_size']]
+
+        if isinstance(self._args['valid_data_dir'], str):
+            len_valid = 0
+        elif isinstance(self._args['split'], int):
+            assert self._args['split'] < self.n_samples, "validation set size is configured to be larger than entire dataset."
+            len_valid = self._args['split']
         else:
-            if isinstance(self.split, int):
-                assert self.split > 0
-                assert self.split < self.n_samples, "validation set size is configured to be larger than entire dataset."
-                len_valid = self.split
-            else:
-                len_valid = int(self.n_samples * self.split)
+            len_valid = int(len(idx_full) * self._args['split'])
 
         valid_idx = idx_full[0:len_valid]
         train_idx = np.delete(idx_full, np.arange(0, len_valid))
+        print(train_idx)
 
         train_sampler = SubsetRandomSampler(train_idx)
         valid_sampler = SubsetRandomSampler(valid_idx)
 
-        self.shuffle = False
-        # return SubsetRandomSampler(idx_full)
         self.n_samples = len(train_idx)
 
         return train_sampler, valid_sampler
 
     def split_validation(self):
-        if self.valid_data_dir is None:
-            return None
-        else:
-            data_dir = self.valid_data_dir if not self.test_mode else self.train_data_dir
-            dataset = torchvision.datasets.ImageFolder(root=data_dir,
-                                                       transform=torchvision.transforms.Compose([
-                                                        #    torchvision.transforms.Resize(self.size, interpolation=2),
-                                                           torchvision.transforms.ToTensor(),
-                                                           torchvision.transforms.Normalize(
-                                                               mean=self.imgs_mean,
-                                                               std=self.imgs_std
-                                                           )
-                                                       ]))
+        if self._args['valid_data_dir']:
+            data_dir = self._args['valid_data_dir']
+            dataset = torchvision.datasets.ImageFolder(
+                root=data_dir,
+                transform=self.tarnsforms)
+            valid_sampler, _ = self.__gen_sampler(dataset)
             print("get %d data for valid_data" % (len(dataset)))
-            # sampler = self.__gen_sampler(dataset, self.test_mode)
-            init_kwargs = {
-                'dataset': dataset,
-                'batch_size': self.batch_size,
-                'shuffle': self.shuffle,
-                'sampler': self.valid_sampler,
-                'collate_fn': self.collate_fn,
-                'num_workers': self.num_workers,
-                'pin_memory': True
-            }
-            return DataLoader(**init_kwargs)
+        else:
+            dataset = self.dataset
+            valid_sampler = self.valid_sampler
+
+        init_kwargs = {
+            'dataset': dataset,
+            'batch_size': self._args['batch_size'],
+            'shuffle': False,
+            'sampler': valid_sampler,
+            'collate_fn': self._args['collate_fn'],
+            'num_workers': self._args['num_workers'],
+            'pin_memory': True
+        }
+        return DataLoader(**init_kwargs)

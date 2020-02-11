@@ -23,8 +23,9 @@ class Registry(dict):
         f = some_registry["foo_modeul"]
     '''
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name,*args, **kwargs):
         super(Registry, self).__init__(*args, **kwargs)
+        self.name = name
 
     def register(self, module_name, module=None):
         # used as function call
@@ -43,4 +44,4 @@ class Registry(dict):
         if key in self:
             return super().__getitem__(key)
         else:
-            raise Exception("%s is not registered in this scope" % key)
+            raise Exception("%s is not registered in this scope [%s]" % (key, self.name))
