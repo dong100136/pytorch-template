@@ -1,0 +1,68 @@
+exp_name: tgs-salt-identification-challenge
+version: 2.0
+workspace: /root/trash/log
+n_gpu: 2
+arch:
+  type: UNet
+  args:
+    num_classes: 1
+dataloader:
+  type: CSVImgDataLoader
+  args:
+    train_csv: /root/dataset/tgs-salt-identification-challenge/train.csv
+    valid_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv
+    batch_size: 32
+    training: True
+    num_workers: 16
+    test_mode: False
+    resize: [224, 224]
+    data_augement: False
+optimizer:
+  type: Adam
+  args:
+    lr: 0.001
+    weight_decay: 0.003
+    amsgrad: True
+loss: logloss
+metrics:
+  - accuracy
+  - logloss
+lr_scheduler:
+  type: StepLR
+  args:
+    step_size: 5
+    gamma: 0.5
+trainer:
+  type: BasicTrainer
+  args:
+    epochs: 100
+    save_period: 1
+    verbosity: 2
+    monitor: min val_loss
+    early_stop: 5
+    tensorboard: True
+    save_params_hist: False
+    n_gpu: 2
+
+valid_dataloader:
+  type: CSVImgDataLoader
+  args:
+    train_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv
+    batch_size: 64
+    training: False
+    num_workers: 4
+    test_mode: False
+    resize: [224, 224]
+
+# prediction
+predict_dataloader:
+  type: CSVImgDataLoader
+  args:
+    train_csv: /root/dataset/tgs-salt-identification-challengetest.csv
+    batch_size: 64
+    training: False
+    num_workers: 4
+    test_mode: False
+    resize: [224, 224]
+predict_hook: []
+

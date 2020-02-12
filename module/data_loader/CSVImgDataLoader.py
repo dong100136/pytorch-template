@@ -12,8 +12,9 @@ import pandas as pd
 from PIL import Image
 import torch
 
-@DATA_LOADER.register("CSVDataLoader")
-class CSVDataLoader(DataLoader):
+
+@DATA_LOADER.register("CSVImgDataLoader")
+class CSVImgDataLoader(DataLoader):
     """
     Base class for all data loaders
         config:
@@ -41,8 +42,8 @@ class CSVDataLoader(DataLoader):
         "test_mode": False,
         "collate_fn": default_collate,
         "resize": None,
-        "label_col": 'label',
-        'img_col': 'img',
+        "masks_col": 'masks',
+        'img_col': 'images',
         'data_augement': False,
     }
 
@@ -54,9 +55,11 @@ class CSVDataLoader(DataLoader):
 
         self.batch_idx = 0
 
-        self.dataset = CSVDataSet(train_csv, 
-                                  transforms=transforms,
-                                  test_mode= self._args['test_mode'])
+        self.dataset = CSVImgDataSet(train_csv,
+                                     label_col=self._args['masks_col'],
+                                     img_col=self._args['img_col'],
+                                     transforms=transforms,
+                                     test_mode=self._args['test_mode'])
         self.n_samples = len(self.dataset)
         print("get %d data for train_data" % (self.n_samples))
 
@@ -70,7 +73,7 @@ class CSVDataLoader(DataLoader):
         }
         super().__init__(**self.init_kwargs)
 
-    def __init_transformer(self,data_augement):
+    def __init_transformer(self, data_augement):
         transform_ftn = []
         if self._args['resize']:
             transform_ftn.append(T.Resize(self._args['resize']))
@@ -92,8 +95,11 @@ class CSVDataLoader(DataLoader):
     def split_validation(self):
         data_csv = self._args['valid_csv']
         transforms = self.__init_transformer(False)
-        dataset = CSVDataSet(data_csv, transforms=transforms,
-                             test_mode= self._args['test_mode'])
+        dataset = CSVImgDataSet(data_csv,
+                                label_col=self._args['masks_col'],
+                                img_col=self._args['img_col'],
+                                transforms=transforms,
+                                test_mode=self._args['test_mode'])
         print("get %d data for valid_data" % (len(dataset)))
 
         init_kwargs = {
@@ -107,16 +113,16 @@ class CSVDataLoader(DataLoader):
         return DataLoader(**init_kwargs)
 
 
-class CSVDataSet(Dataset):
+class CSVImgDataSet(Dataset):
     # 初始化，定义数据内容和标签
-    def __init__(self, csv_data, label_col='label', img_col='img',
+    def __init__(self, csv_data, label_col='masks', img_col='images',
                  transforms=None, test_mode=False):
         self.csv_data = Path(csv_data)
         self.base_path = self.csv_data.parent
 
         self.data = pd.read_csv(csv_data)
         if label_col in self.data:
-            self.labels = list(self.data[label_col])
+            self.masks = list(self.data[label_col])
             self.have_label = True
         else:
             self.have_label = False
@@ -126,10 +132,10 @@ class CSVDataSet(Dataset):
         self.transforms = transforms
 
         if test_mode:
-            self.n_samples = min(300,self.n_samples)
+            self.n_samples = min(300, self.n_samples)
             self.imgs = self.imgs[:self.n_samples]
             if self.have_label:
-                self.labels = self.labels[:self.n_samples]
+                self.masks = self.masks[:self.n_samples]
 
     def __len__(self):
         return self.n_samples
@@ -143,8 +149,8 @@ class CSVDataSet(Dataset):
             img = self.transforms(img)
 
         if self.have_label:
-            label = self.labels[index]
+            mask = self.masks[index]
 
-            return img, label
+            return img, mask
         else:
             return img
