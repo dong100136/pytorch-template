@@ -59,7 +59,8 @@ class CSVImgDataLoader(DataLoader):
                                      label_col=self._args['masks_col'],
                                      img_col=self._args['img_col'],
                                      transforms=transforms,
-                                     test_mode=self._args['test_mode'])
+                                     test_mode=self._args['test_mode'],
+                                     img_size=self._args['resize'])
         self.n_samples = len(self.dataset)
         print("get %d data for train_data" % (self.n_samples))
 
@@ -78,10 +79,6 @@ class CSVImgDataLoader(DataLoader):
         if self._args['resize']:
             transform_ftn.append(T.Resize(self._args['resize']))
 
-        if data_augement:
-            transform_ftn.append(T.RandomRotation(20))
-            transform_ftn.append(T.ColorJitter(brightness=0.5, contrast=0.5, hue=0.5))
-
         transform_ftn.extend([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(
@@ -99,7 +96,8 @@ class CSVImgDataLoader(DataLoader):
                                 label_col=self._args['masks_col'],
                                 img_col=self._args['img_col'],
                                 transforms=transforms,
-                                test_mode=self._args['test_mode'])
+                                test_mode=self._args['test_mode'],
+                                img_size=self._args['resize'])
         print("get %d data for valid_data" % (len(dataset)))
 
         init_kwargs = {
@@ -116,13 +114,15 @@ class CSVImgDataLoader(DataLoader):
 class CSVImgDataSet(Dataset):
     # 初始化，定义数据内容和标签
     def __init__(self, csv_data, label_col='masks', img_col='images',
-                 transforms=None, test_mode=False):
+                 transforms=None, test_mode=False, img_size=(224,224)):
         self.csv_data = Path(csv_data)
         self.base_path = self.csv_data.parent
+        self.img_size = img_size
 
         self.data = pd.read_csv(csv_data)
         if label_col in self.data:
-            self.masks = list(self.data[label_col])
+            self.masks = [str(self.base_path/x) for x in self.data[label_col]]
+            self.target_transform = T.Compose([T.ToTensor()])
             self.have_label = True
         else:
             self.have_label = False
@@ -141,7 +141,7 @@ class CSVImgDataSet(Dataset):
         return self.n_samples
 
     def __getitem__(self, index):
-        img = Image.open(self.imgs[index])
+        img = Image.open(self.imgs[index]).convert("RGB")
         # img = cv2.imread(img_path)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -150,6 +150,10 @@ class CSVImgDataSet(Dataset):
 
         if self.have_label:
             mask = self.masks[index]
+            # ! resize bug
+            mask = Image.open(mask).resize(self.img_size).convert('1')
+            mask = self.target_transform(mask).long()
+            mask = torch.squeeze(mask)
 
             return img, mask
         else:

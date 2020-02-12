@@ -6,6 +6,8 @@ LOSS.register('nll_loss', F.nll_loss)
 
 @LOSS.register('logloss')
 def logloss(output, target):
+    print(output.shape,target.shape)
+    print(output[0])
     return F.nll_loss(torch.log(output), target)
 
 

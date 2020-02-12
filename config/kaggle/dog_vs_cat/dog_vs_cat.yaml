@@ -22,7 +22,7 @@ optimizer:
   type: Adam
   args:
     lr: 0.001
-    weight_decay: 0.003
+    weight_decay: 0.0005
     amsgrad: True
 loss: logloss
 metrics:

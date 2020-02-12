@@ -63,7 +63,7 @@ class BasicTrainer(BaseTrainer):
                 self.train_metrics.update(met.__name__, met(output, target))
 
             if batch_idx % self.log_step == 0:
-                self.logger.debug('Train Epoch: {} {} Loss: {:.6f}, steps_per_sec: {:.6f}'.format(
+                self.logger.info('Train Epoch: {} {} Loss: {:.6f}, steps_per_sec: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
                     loss.item(),

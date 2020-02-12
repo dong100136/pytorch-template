@@ -57,7 +57,7 @@ class ConfigParser:
     def _init_default_config_parser(self, config, logger):
         raise NotImplementedError
 
-    def get_logger(self, name, verbosity=logging.DEBUG):
+    def get_logger(self, name, verbosity=logging.INFO):
         logging.basicConfig(level=verbosity)
         logger = logging.getLogger(name)
         return logger
