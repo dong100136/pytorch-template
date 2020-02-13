@@ -9,6 +9,10 @@ def accuracy(output, target):
         assert pred.shape[0] ==len(target)
         correct = 0
         correct += np.sum(pred==target).item()
+
+        total = 1
+        for i in target.shape:
+            total *=i
     else:
         with torch.no_grad():
             pred = torch.argmax(output, dim=1)
@@ -16,4 +20,8 @@ def accuracy(output, target):
             correct = 0
             correct += torch.sum(pred == target).item()
 
-    return correct / len(target)
+            total = 1
+            for i in target.shape:
+                total *=i
+
+    return correct / total
