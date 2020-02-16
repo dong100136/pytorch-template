@@ -53,12 +53,13 @@ valid_dataloader:
     num_workers: 4
     test_mode: False
     resize: [224, 224]
+valid_hook: [plot_seg]
 
 # prediction
 predict_dataloader:
   type: CSVImgDataLoader
   args:
-    train_csv: /root/dataset/tgs-salt-identification-challengetest.csv
+    train_csv: /root/dataset/tgs-salt-identification-challenge/test.csv
     batch_size: 64
     training: False
     num_workers: 4
