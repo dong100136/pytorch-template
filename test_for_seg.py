@@ -47,7 +47,7 @@ def main(config, resume_model=None, device=None):
     targets = None
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
-            if len(target) > 10:
+            if target and len(target) > 10:
                 break
 
             target = target.to(device)
