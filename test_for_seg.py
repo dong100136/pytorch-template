@@ -42,14 +42,12 @@ def main(config, resume_model=None, device=None):
     model = model.to(device)
     model.eval()
 
-    cnt = 0
     samples = None
     preds = None
     targets = None
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
-            cnt += 1
-            if cnt > 10:
+            if len(target) > 10:
                 break
 
             target = target.to(device)
