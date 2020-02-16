@@ -43,45 +43,54 @@ def main(config, resume_model=None, device=None):
     model.eval()
 
     cnt = 0
-    data = None
+    samples = None
     preds = None
     targets = None
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
             cnt += 1
-            if cnt>10:
+            if cnt > 10:
                 break
 
             target = target.to(device)
             data = data.to(device)
             output = model(data)
 
-            output =  output.cpu().detach()
+            output = output.cpu().detach()
             target = target.cpu().detach()
 
             if preds is None:
+                samples = data
                 preds = output
                 targets = target
             else:
-                preds = torch.cat([preds, output],dim=0)
-                targets = torch.cat([targets,target],dim=0)
+                samples = torch.cat([samples, data], dim=0)
+                preds = torch.cat([preds, output], dim=0)
+                targets = torch.cat([targets, target], dim=0)
 
-    n_samples = len(data_loader.sampler)
+    n_samples = len(targets)
 
     targets = np.squeeze(targets)
-    logger.info("="*50)
-    logger.info("= support\t:%d"%(targets.shape[0]))
-    for metric in metrics:
-        score = metric(output=preds,target=targets)
-        logger.info("= %s\t:%f"%(metric.__name__, score))
+    logger.info("=" * 50)
+    logger.info("= support\t:%d" % (targets.shape[0]))
 
-    logger.info("="*50)
+    params = {
+        "dataset": data_loader.dataset,
+        "samples": samples,
+        "predicts": preds,
+        "targets": targets
+    }
+    for metric in metrics:
+        score = metric(**params)
+        logger.info("= %s\t:%f" % (metric.__name__, score))
+
+    logger.info("=" * 50)
 
     for hook in predict_hooks:
         hook(
-            target = targets,
-            predict = preds,
-            workspace = configParser['prediction_path']
+            target=targets,
+            predict=preds,
+            workspace=configParser['prediction_path']
         )
 
 
