@@ -5,6 +5,7 @@ from logger import TensorboardWriter
 import os
 from pathlib import Path
 import logging
+import pandas as pd
 
 
 class BaseTrainer:
@@ -27,7 +28,6 @@ class BaseTrainer:
         self.criterion = criterion
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
-
 
         self.epochs = cfg_trainer['epochs']
         self.save_period = cfg_trainer['save_period']
@@ -104,6 +104,25 @@ class BaseTrainer:
             for key, value in log.items():
                 self.logger.info('    {:15s}: {}'.format(str(key), value))
             self.logger.info('=' * 50)
+
+            # save loss and val_loss
+            if (self.checkpoint_dir / 'loss.log').exists():
+                save_loss = pd.read_csv(self.checkpoint_dir / 'loss.log')
+            else:
+                save_loss = pd.DataFrame({
+                    'epoch': [],
+                    'loss': [],
+                    'val_loss': []
+                })
+
+            if epoch in save_loss['epoch']:
+                print('1')
+                save_loss.loc[save_loss['epoch'] == epoch, 'loss'] = log['loss']
+                save_loss.loc[save_loss['epoch'] == epoch, 'val_loss'] = log['val_loss']
+            else:
+                d = pd.Series({'epoch': epoch, 'loss': log['loss'], 'val_loss': log['val_loss']})
+                save_loss = save_loss.append(d, ignore_index=True)
+            save_loss.to_csv(self.checkpoint_dir / 'loss.log', index=None)
 
             # evaluate model performance according to configured metric, save best checkpoint as model_best
             best = False

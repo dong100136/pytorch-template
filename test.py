@@ -13,16 +13,56 @@ import os
 from utils.config_parser import ConfigParser
 
 
+def to_device(data, device):
+    if isinstance(data, list):
+        data = [x.to(device, non_blocking=True) for x in data]
+    elif isinstance(data, dict):
+        data = {k: v.to(device, non_blocking=True) for k, v in data.items()}
+    else:
+        data = data.to(device, non_blocking=True)
+
+    return data
+
+
+class DataCollection:
+
+    def __init__(self):
+        self._data = []
+        self.n_samples = 0
+
+    def append(self, data):
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+
+        if len(self._data) == 0:
+            for i in range(len(data)):
+                self._data.append(data[i].detach())
+        else:
+            for i in range(len(data)):
+                self._data[i] = torch.cat([self._data[i], data[i].detach()], dim=0)
+
+        self.n_samples += len(data[0])
+
+    def get_data(self):
+        if len(self._data) == 1:
+            return self._data[0]
+        else:
+            return self._data
+
+    def __len__(self):
+        return self.n_samples
+
+
 def main(config, resume_model=None, device=None):
     logger = logging.getLogger('valid')
 
     configParser = ConfigParser(config)
     # setup data_loader instances
     data_loader = configParser.init_dataloader("valid_dataloader")
-    model = configParser.init_model()
+    model = configParser.init_model(verbose=False)
 
     predict_hooks = configParser.get_hooks('valid_hook')
-    metrics = configParser.init_metrics()
+    metrics = configParser.init_metrics('valid_metrics')
 
     best_model_path = configParser['trainer']['args']['checkerpoint_dir'] / "model_best.pth"
     best_model_path = Path(best_model_path)
@@ -42,41 +82,40 @@ def main(config, resume_model=None, device=None):
     model = model.to(device)
     model.eval()
 
-    preds = None
-    targets = None
+    preds = DataCollection()
+    targets = DataCollection()
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
-            target = target.to(device)
-            data = data.to(device)
+            target = to_device(target, device)
+            data = to_device(data, device)
             output = model(data)
 
-            output =  output.cpu().detach()
-            target = target.cpu().detach()
-
-            if preds is None:
-                preds = output
-                targets = target
-            else:
-                preds = torch.cat([preds, output],dim=0)
-                targets = torch.cat([targets,target],dim=0)
+            preds.append(output)
+            targets.append(target)
 
     n_samples = len(data_loader.sampler)
 
-    targets = np.squeeze(targets)
-    logger.info("="*50)
-    logger.info("= support\t:%d"%(targets.shape[0]))
+    logger.info("=" * 50)
+    logger.info("= support\t:%d" % (n_samples))
+    params = {
+        'predicts': preds.get_data(),
+        'targets': targets.get_data()
+    }
     for metric in metrics:
-        score = metric(output=preds,target=targets)
-        logger.info("= %s\t:%f"%(metric.__name__, score))
+        score = metric(**params)
+        logger.info("= %s\t:%f" % (metric.__name__, score))
 
-    logger.info("="*50)
+    logger.info("=" * 50)
+
+    params = {
+        'dataset': data_loader.dataset,
+        'predicts': preds,
+        'targets': targets,
+        'workspace': configParser['prediction_path']
+    }
 
     for hook in predict_hooks:
-        hook(
-            target = targets,
-            predict = preds,
-            workspace = configParser['prediction_path']
-        )
+        hook(**params)
 
 
 if __name__ == '__main__':

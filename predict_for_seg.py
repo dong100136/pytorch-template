@@ -42,29 +42,27 @@ def main(config, resume_model=None, device=None):
     model = model.to(device)
     model.eval()
 
-    preds = None
-    input_data = None
+    output_path = configParser['prediction_path'] / 'mask'
+    output_path.mkdir(exist_ok=True, parents=True)
+    imgs_path = data_loader.dataset.imgs
+    num_samples = len(imgs_path)
+    i = 0
     with torch.no_grad():
-        for i, data in enumerate(tqdm(data_loader)):
+        for data in tqdm(data_loader):
             if isinstance(data, list):
                 data = data[0]
             data = data.to(device)
             output = model(data)
 
-            output = output.cpu().detach().numpy()
-            if not isinstance(preds, np.ndarray):
-                preds = output
-            else:
-                preds = np.vstack([preds, output])
+            masks = output[0].cpu().detach().numpy()
 
-    n_samples = len(data_loader.sampler)
-
-    for hook in predict_hooks:
-        hook(
-            dataset=data_loader.dataset,
-            predict=preds,
-            workspace=configParser['prediction_path']
-        )
+            for k in range(masks.shape[0]):
+                img_path = output_path / ('%s.npy' % Path(imgs_path[i]).stem)
+                if output[1][k] <= 0.5:
+                    masks[k] = 0
+                np.save(img_path, masks[k])
+                i = i + 1
+            # print("save output to %s" % img_path)
 
 
 if __name__ == '__main__':

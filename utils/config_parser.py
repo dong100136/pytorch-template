@@ -38,15 +38,14 @@ class ConfigParser:
     def init_dataloader(self, loader_name):
         return self.parser.init_dataloader(loader_name)
 
-    def init_model(self):
-        return self.parser.init_model()
+    def init_model(self, verbose=True):
+        return self.parser.init_model(verbose=verbose)
 
-    def init_metrics(self):
-        if self.config['metrics'] and len(self.config['metrics'])>0:
-            return self.parser.init_metrics()
+    def init_metrics(self, name='metrics'):
+        if self.config[name] and len(self.config[name]) > 0:
+            return self.parser.init_metrics(name)
         else:
             return []
-
 
     def get_hooks(self, hook_names):
         if hook_names in self.config and self.config[hook_names] and len(self.config[hook_names]) > 0:
@@ -70,9 +69,28 @@ class ConfigParser:
 
 
 class ConfigParserV2:
+    # this is for default config
+    config = {
+        'lr_scheduler': {
+            'type': 'ReduceLROnPlateau'
+        },
+        'optimizer': {
+            'type': 'Adam',
+            'args': {
+                'lr': float('1e-4')
+            }
+        }
+    }
+
     def __init__(self, config, logger):
-        self.config = config
+        self.config.update(config)
         self.logger = logger
+
+        lr = self.config['optimizer']['args']['lr']
+        if isinstance(lr, str):
+            self.config['optimizer']['args']['lr'] = float(lr)
+
+        self.config['trainer']['args']['n_gpu'] = self.config['n_gpu']
 
     def get_trainer(self, resume=True):
 
@@ -107,15 +125,16 @@ class ConfigParserV2:
 
         return trainer
 
-    def init_model(self):
+    def init_model(self, verbose=True):
         model = self._init_obj(ARCH, self.config['arch'])
-        self.logger.info(model)
+        if verbose:
+            self.logger.info(model)
         return model
 
-    def init_metrics(self):
+    def init_metrics(self, name='metrics'):
         return [
             self._init_obj(METRICS, metric)
-            for metric in self.config['metrics']
+            for metric in self.config[name]
         ]
 
     def init_dataloader(self, dataloader_name):
@@ -136,7 +155,10 @@ class ConfigParserV2:
             else:
                 module_name = obj['type']
 
-            module_args = dict(obj['args'])
+            if 'args' in obj:
+                module_args = dict(obj['args'])
+            else:
+                module_args = {}
 
             assert all([k not in module_args for k in kwargs]), 'Overwriting kwargs given in config file is not allowed'
             module_args.update(kwargs)

@@ -47,15 +47,13 @@ def main(config, resume_model=None, device=None):
     targets = None
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
-            if target and len(target) > 10:
-                break
-
             target = target.to(device)
             data = data.to(device)
             output = model(data)
 
             output = output.cpu().detach()
             target = target.cpu().detach()
+            data = data.cpu().detach()
 
             if preds is None:
                 samples = data
@@ -65,6 +63,9 @@ def main(config, resume_model=None, device=None):
                 samples = torch.cat([samples, data], dim=0)
                 preds = torch.cat([preds, output], dim=0)
                 targets = torch.cat([targets, target], dim=0)
+
+            if len(targets) > 10:
+                break
 
     n_samples = len(targets)
 
@@ -76,20 +77,13 @@ def main(config, resume_model=None, device=None):
         "dataset": data_loader.dataset,
         "samples": samples,
         "predicts": preds,
-        "targets": targets
+        "targets": targets,
+        "workspace": configParser['prediction_path']
     }
-    for metric in metrics:
-        score = metric(**params)
-        logger.info("= %s\t:%f" % (metric.__name__, score))
-
-    logger.info("=" * 50)
 
     for hook in predict_hooks:
-        hook(
-            target=targets,
-            predict=preds,
-            workspace=configParser['prediction_path']
-        )
+        hook(**params)
+    logger.info("=" * 50)
 
 
 if __name__ == '__main__':

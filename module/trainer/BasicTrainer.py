@@ -5,6 +5,7 @@ from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 from ..registry import TRAINER
 
+
 @TRAINER.register('BasicTrainer')
 class BasicTrainer(BaseTrainer):
     """
@@ -13,11 +14,11 @@ class BasicTrainer(BaseTrainer):
 
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader,
                  valid_data_loader=None,
-                 lr_scheduler=None, 
+                 lr_scheduler=None,
                  len_epoch=None,
-                 save_params_hist = False,
+                 save_params_hist=False,
                  logger=None,
-                  **kwargs):
+                 **kwargs):
         super().__init__(model, criterion, metric_ftns, optimizer, config, logger)
         self.config = config
         self.data_loader = data_loader
@@ -48,8 +49,10 @@ class BasicTrainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
+
         for batch_idx, (data, target) in enumerate(self.data_loader):
-            data, target = data.to(self.device,non_blocking=True), target.to(self.device,non_blocking=True)
+            data = self.to_device(data)
+            target = self.to_device(target)
 
             self.optimizer.zero_grad()
             output = self.model(data)
@@ -69,7 +72,7 @@ class BasicTrainer(BaseTrainer):
                     loss.item(),
                     speed))
 
-                if epoch<2 and batch_idx<10:
+                if epoch < 2 and batch_idx < 10:
                     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
@@ -84,6 +87,25 @@ class BasicTrainer(BaseTrainer):
             self.lr_scheduler.step(epoch)
         return log
 
+    def _fix_bn_eval(self, m):
+        """
+        ! this may be a bug of batchnorm, check this link
+        https://www.zhihu.com/question/67209417/answer/835804637
+        """
+        classname = m.__class__.__name__
+        if classname.find('BatchNorm') != -1:
+            m.track_running_stats = False
+
+    def to_device(self, data):
+        if isinstance(data, list):
+            data = [x.to(self.device, non_blocking=True) for x in data]
+        elif isinstance(data, dict):
+            data = {k: v.to(self.device, non_blocking=True) for k, v in data.items()}
+        else:
+            data = data.to(self.device, non_blocking=True)
+
+        return data
+
     def _valid_epoch(self, epoch):
         """
         Validate after training an epoch
@@ -93,9 +115,12 @@ class BasicTrainer(BaseTrainer):
         """
         self.model.eval()
         self.valid_metrics.reset()
+
+        self.model.apply(self._fix_bn_eval)
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
-                data, target = data.to(self.device, non_blocking=True), target.to(self.device, non_blocking=True)
+                data = self.to_device(data)
+                target = self.to_device(target)
 
                 output = self.model(data)
                 loss = self.criterion(output, target)
@@ -105,7 +130,7 @@ class BasicTrainer(BaseTrainer):
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
 
-                if epoch<2 and batch_idx<10:
+                if epoch < 2 and batch_idx < 10:
                     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         # add histogram of model parameters to the tensorboard

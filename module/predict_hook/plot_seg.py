@@ -1,16 +1,19 @@
 from ..registry import HOOK
+import random
 from utils.plot_utils import make_grid_img
 import numpy as np
 import os
 from pathlib import Path
+import torch
+import matplotlib.pyplot as plt
 
 
 @HOOK.register("plot_seg")
-def plot_seg(samples, predicts, targets,
+def plot_seg(samples=None, predicts=None, targets=None,
              n_samples=5,
              shuffle=True,
              workspace=Path("/tmp"),
-             save_path="plot.png",
+             save_path="plot_seg.png",
              *args, **kwargs):
     '''
     func: plot_result
@@ -21,19 +24,45 @@ def plot_seg(samples, predicts, targets,
         save_path = workspace / save_path
         n_samples = min(n_samples, len(targets))
 
-        samples = samples[:n_samples]
-        predicts = predicts[:n_samples]
-        targets = targets[:n_samples]
+        idxs = list(range(len(targets)))
+        random.shuffle(idxs)
 
-        prob = torch.max(predicts, axis=1)
-        predicts = torch.argmax(predicts, axis=1)
+        if len(predicts.shape) == 4:
+            prob, predict_labels = torch.max(predicts, axis=1)
+        else:
+            prob = predicts
+            predict_labels = torch.zeros_like(predicts)
+            predict_labels[predicts > 0.5] = 1
 
-        samples = samples.transpose([0, 2, 3, 1])
-        predicts = predicts.transpose([0, 2, 3, 1])
-        targets = targets.transpose([0, 2, 3, 1])
+        if isinstance(samples, torch.Tensor) and len(samples.shape) == 4:
+            samples = samples.permute(0, 2, 3, 1)
 
-        print(prob.shape, predict.shape, targets.shape)
+        for id, i in enumerate(idxs[:n_samples]):
+            if isinstance(samples, torch.Tensor):
+                s = samples[i]
+                plt.subplot(n_samples, 3, 3 * id + 1)
+                val_min = torch.min(s)
+                val_max = torch.max(s)
+                s = (s - val_min) / (val_max - val_min)
+                plt.imshow(s)
+                plt.axis('off')
 
-        for i in range(n_samples):
-            plt.subplot(n_samples, 3, 3 * i + 1)
-            plt.imshow(sampels[i])
+            if i == 0:
+                plt.title("origin input")
+
+            plt.subplot(n_samples, 3, 3 * id + 2)
+            plt.imshow(predict_labels[i].long())
+            plt.axis('off')
+
+            if i == 0:
+                plt.title("predict labels")
+
+            plt.subplot(n_samples, 3, 3 * id + 3)
+            plt.imshow(targets[i])
+            plt.axis('off')
+
+            if i == 0:
+                plt.title("ground true")
+
+        plt.savefig(save_path, bbox_inches='tight')
+        print("plot seg result and save to %s" % save_path)

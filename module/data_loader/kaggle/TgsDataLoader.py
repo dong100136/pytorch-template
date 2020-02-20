@@ -16,8 +16,8 @@ from albumentations.pytorch.transforms import ToTensor, ToTensorV2
 import random
 
 
-@DATA_LOADER.register("CSVImgDataLoader")
-class CSVImgDataLoader(DataLoader):
+@DATA_LOADER.register("TgsDataLoader")
+class TgsDataLoader(DataLoader):
     """
     Base class for all data loaders
         config:
@@ -126,12 +126,12 @@ class CSVImgDataSet(Dataset):
         self.data = pd.read_csv(csv_data)
         if label_col in self.data:
             self.masks = [str(self.base_path / x) for x in self.data[label_col]]
-            # ! this is for seg aux
             self.labels = [int(x) for x in self.data['labels']]
             self.have_label = True
         else:
             self.have_label = False
 
+        self.depths = [int(x) for x in self.data['depths']]
         self.imgs = [str(self.base_path / x) for x in self.data[img_col]]
         self.n_samples = len(self.imgs)
         self.transforms = transforms
@@ -155,20 +155,19 @@ class CSVImgDataSet(Dataset):
         std = np.array([0.15930214, 0.15930214, 0.15930214])
         img = (img - mean) / std
         img = torch.from_numpy(img).permute(2, 0, 1).float()
-        data = {'image': img}
+        data = {'image': img, 'depth': self.depths[index]}
 
         if self.have_label:
             mask = Image.open(self.masks[index]).resize((128, 128)).convert('1')
             mask = np.array(mask).astype(np.int)
             mask = torch.from_numpy(mask)
             data['mask'] = mask
-            # ! this is for seg aux
             data['label'] = self.labels[index]
 
         # data = self.transforms(**data)
 
         if self.have_label:
             # print(data['label'].shape)
-            return data['image'], (data['mask'].squeeze(0).long(), data['label'])
+            return (data['image'], data['depth']), (data['mask'].squeeze(0).long(), data['label'])
         else:
-            return data['image']
+            return (data['image'], data['depth'])
