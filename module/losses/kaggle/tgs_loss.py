@@ -20,6 +20,6 @@ class Tgs_Loss(nn.Module):
         loss2 = F.binary_cross_entropy_with_logits(pred_masks, target_masks.float())
         loss3 = F.binary_cross_entropy_with_logits(pred_labels, target_labels.float())
 
-        loss = 0.3 * loss1 + 0.4 * loss2 + 0.3 * loss3
+        loss = 0.4 * loss1 + 0.4 * loss2 + 0.2 * loss3
 
         return loss.mean()

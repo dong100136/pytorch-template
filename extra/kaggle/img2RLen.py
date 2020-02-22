@@ -8,7 +8,7 @@ from utils.img_tools import RLenc
 from tqdm import tqdm
 
 # -------------------------------------------
-base_path = Path("/root/trash/log/prediction/tgs-salt-identification-challenge-unet-aux")
+base_path = Path("/root/trash/log/prediction/tgs-net-aux-depth-v6.1")
 imgs_path = list((base_path / 'mask').glob("*.npy"))
 output_file = base_path / 'submission.csv'
 threshold = 0.5

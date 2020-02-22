@@ -5,7 +5,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.sampler import SubsetRandomSampler
 import torchvision.transforms as T
-from ..registry import DATA_LOADER
+from ...registry import DATA_LOADER
 from collections import namedtuple
 from pathlib import Path
 import pandas as pd
@@ -151,11 +151,13 @@ class CSVImgDataSet(Dataset):
         img = Image.open(self.imgs[index]).convert("RGB").resize((128, 128))
         img = np.array(img) / 255.0
 
-        mean = np.array([0.47090787, 0.47090787, 0.47090787])
-        std = np.array([0.15930214, 0.15930214, 0.15930214])
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
         img = (img - mean) / std
         img = torch.from_numpy(img).permute(2, 0, 1).float()
-        data = {'image': img, 'depth': self.depths[index]}
+
+        depth = (self.depths[index] - 506) / 209
+        data = {'image': img, 'depth': depth}
 
         if self.have_label:
             mask = Image.open(self.masks[index]).resize((128, 128)).convert('1')

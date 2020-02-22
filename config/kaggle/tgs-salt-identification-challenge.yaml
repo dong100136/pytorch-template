@@ -1,21 +1,26 @@
-exp_name: tgs-net-aux-depth
+exp_name: tgs-net-aux-depth-v6.1
 version: 2.0
 workspace: /root/trash/log
 n_gpu: 1
 arch:
-  type: UNet
+  type: TGS_UNet
   args:
-    backbone: resnet34
-    num_classes: 1
-    pretrained: True
-    aux: classify
-    aux_num_classes: 1
+    encoder_name: resnext50_32x4d
+    classes: 1
+    encoder_weights: imagenet
+    decoder_attention_type: scse
+    activation: sigmoid
+    aux_params:
+      pooling: avg
+      dropout: 0.5
+      activation: sigmoid
+      classes: 1
 dataloader:
   type: TgsDataLoader
   args:
     train_csv: /root/dataset/tgs-salt-identification-challenge/train_v2.csv
     valid_csv: /root/dataset/tgs-salt-identification-challenge/valid_v2.csv
-    batch_size: 8
+    batch_size: 32
     training: True
     num_workers: 8
     test_mode: False
@@ -23,17 +28,17 @@ dataloader:
 optimizer:
   type: Adam
   args:
-    lr: 1e-5
+    lr: 1e-4
     weight_decay: 0
 loss:
   type: Tgs_Loss
 metrics:
   - tgs_accuracy
 lr_scheduler:
-  type: ReduceLROnPlateau
+  type: StepLR
   args:
-    patience: 3
-    verbose: True
+    step_size: 10
+    gamma: 0.5
 trainer:
   type: BasicTrainer
   args:
@@ -41,13 +46,13 @@ trainer:
     save_period: 1
     verbosity: 2
     monitor: min val_loss
-    early_stop: 10
+    early_stop: 11
     tensorboard: False
     save_params_hist: False
 
 #--------valid---------
 valid_dataloader:
-  type: CSVImgDataLoader
+  type: TgsDataLoader
   args:
     train_csv: /root/dataset/tgs-salt-identification-challenge/valid_v2.csv
     batch_size: 64
@@ -66,11 +71,11 @@ valid_hook:
 
 #--------predict---------
 predict_dataloader:
-  type: CSVImgDataLoader
+  type: TgsDataLoader
   args:
     train_csv: /root/dataset/tgs-salt-identification-challenge/test.csv
-    batch_size: 8
+    batch_size: 128
     training: False
     num_workers: 4
     test_mode: False
-    resize: [224, 224]
+    resize: [128, 128]

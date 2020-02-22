@@ -13,6 +13,17 @@ import os
 from utils.config_parser import ConfigParser
 
 
+def to_device(data, device):
+    if isinstance(data, list):
+        data = [x.to(device, non_blocking=True) for x in data]
+    elif isinstance(data, dict):
+        data = {k: v.to(device, non_blocking=True) for k, v in data.items()}
+    else:
+        data = data.to(device, non_blocking=True)
+
+    return data
+
+
 def main(config, resume_model=None, device=None):
     logger = logging.getLogger('predictor')
 
@@ -49,9 +60,9 @@ def main(config, resume_model=None, device=None):
     i = 0
     with torch.no_grad():
         for data in tqdm(data_loader):
-            if isinstance(data, list):
+            if isinstance(data, list) and isinstance(data[0], list):
                 data = data[0]
-            data = data.to(device)
+            data = to_device(data, device)
             output = model(data)
 
             masks = output[0].cpu().detach().numpy()

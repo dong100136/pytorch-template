@@ -72,8 +72,9 @@ class BasicTrainer(BaseTrainer):
                     loss.item(),
                     speed))
 
-                if epoch < 2 and batch_idx < 10:
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # ! tensorboard img log
+                # if epoch < 2 and batch_idx < 10:
+                #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
@@ -130,8 +131,9 @@ class BasicTrainer(BaseTrainer):
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
 
-                if epoch < 2 and batch_idx < 10:
-                    self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+                # ! tensorflow img log
+                # if epoch < 2 and batch_idx < 10:
+                #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         # add histogram of model parameters to the tensorboard
         if self.save_params_hist:
