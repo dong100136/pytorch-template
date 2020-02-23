@@ -14,13 +14,14 @@ def IOU(predicts, targets, threshold=0.5, eps=1e-5):
         target {[torch.Tensor]} -- [N,H,W]
     """
     assert predicts.shape == targets.shape, "the shape of prediction and targets shoudl be the same size"
-
     with torch.no_grad():
-        predicts[predicts > threshold] = 1
-        predicts[predicts <= threshold] = 0
-        predicts = predicts.long()
-        intersection = (predicts & targets).sum().float()
-        union = (predicts | targets).sum().float()
+        predict_mask = torch.zeros_like(predicts)
+        predict_mask[predicts > threshold] = 1
+        predict_mask = predict_mask.long()
+        targets = targets.long()
+
+        intersection = float(len(torch.nonzero(predict_mask & targets)))
+        union = float(len(torch.nonzero(predict_mask | targets)))
 
         return intersection / (union + eps)
 
@@ -51,5 +52,6 @@ def mIOU(predicts, targets, threshold=0.5, n_classes=2):
 def kaggle_iou(predicts, targets):
     scores = []
     for threshold in np.arange(0.5, 1, 0.05):
-        scores.append(float(IOU(predicts, targets, threshold=threshold)))
+        scores.append(float(IOU(torch.clone(predicts), torch.clone(targets), threshold=threshold)))
+
     return np.mean(scores)

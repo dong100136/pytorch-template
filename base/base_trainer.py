@@ -56,9 +56,16 @@ class BaseTrainer:
                                         cfg_trainer['tensorboard'])
 
         if cfg_trainer['resume'] is not None:
-            self._resume_checkpoint(config.resume)
+            self.load_pretrain_model(cfg_trainer['resume'])
 
         self.load_last_checkpoint()
+
+    def load_pretrain_model(self, resume_path):
+        resume_path = str(resume_path)
+        self.logger.info("Loading pretrain model: {} ...".format(resume_path))
+        checkpoint = torch.load(resume_path)
+
+        self.model.load_state_dict(checkpoint['state_dict'], strict=False)
 
     def load_last_checkpoint(self):
         max_epoch = -1

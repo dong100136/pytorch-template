@@ -13,7 +13,9 @@ from PIL import Image
 import torch
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensor, ToTensorV2
+from albumentations import (HorizontalFlip, ShiftScaleRotate, RandomContrast, RandomBrightness, Compose)
 import random
+import cv2
 
 
 @DATA_LOADER.register("TgsDataLoader")
@@ -79,15 +81,22 @@ class TgsDataLoader(DataLoader):
     def __init_transformer(self):
         transform_ftn = []
 
+        # transform_ftn.append(A.Normalize())
+        # RandomBrightness(p=0.2, limit=0.2),
+        # RandomContrast(p=0.1, limit=0.2),
+
+        if self._args['training']:
+            transform_ftn.extend([
+                HorizontalFlip(p=0.5),
+                ShiftScaleRotate(shift_limit=0.1625, scale_limit=0.6, rotate_limit=0, p=0.7)
+            ])
+
         if self._args['resize']:
             h = self._args['resize'][0]
             w = self._args['resize'][1]
-            transform_ftn.append(A.Resize(h, w))
+            transform_ftn.append(A.PadIfNeeded(h, w, cv2.BORDER_REFLECT_101))
 
-        transform_ftn.extend([
-            # A.Normalize(),
-            ToTensor()
-        ])
+        transform_ftn.append(ToTensorV2())
         transforms = A.Compose(transform_ftn)
         return transforms
 
@@ -142,34 +151,37 @@ class CSVImgDataSet(Dataset):
         if test_mode:
             self.n_samples = min(10, self.n_samples)
 
+        self.depth_info = self.__gen_depth_info()
+
+    def __gen_depth_info(self):
+        depth_info = np.arange(1, 102, 1).reshape((101, 1))
+        depth_info = np.tile(depth_info, (1, 101))
+        depth_info = depth_info / 101
+        return depth_info
+
     def __len__(self):
         return self.n_samples
 
     def __getitem__(self, id):
         index = self.idx[id]
-
-        img = Image.open(self.imgs[index]).convert("RGB").resize((128, 128))
-        img = np.array(img) / 255.0
-
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        img = (img - mean) / std
-        img = torch.from_numpy(img).permute(2, 0, 1).float()
-
         depth = (self.depths[index] - 506) / 209
-        data = {'image': img, 'depth': depth}
+
+        gray = np.array(Image.open(self.imgs[index]).convert('L')) / 255
+        img = np.ones((101, 101, 3))
+        img[:, :, 0] = gray
+        img[:, :, 1] = self.depth_info
+        img[:, :, 2] = gray * self.depth_info
+        data = {'image': img}
 
         if self.have_label:
-            mask = Image.open(self.masks[index]).resize((128, 128)).convert('1')
-            mask = np.array(mask).astype(np.int)
-            mask = torch.from_numpy(mask)
+            mask = Image.open(self.masks[index]).convert('1')
+            mask = np.array(mask).astype(int)
             data['mask'] = mask
-            data['label'] = self.labels[index]
+            label = self.labels[index]
 
-        # data = self.transforms(**data)
+            data = self.transforms(**data)
 
-        if self.have_label:
-            # print(data['label'].shape)
-            return (data['image'], data['depth']), (data['mask'].squeeze(0).long(), data['label'])
-        else:
-            return (data['image'], data['depth'])
+            return (data['image'].float(), depth), (data['mask'].squeeze(0).long(), label)
+
+        data = self.transforms(**data)
+        return (data['image'].float(), depth)

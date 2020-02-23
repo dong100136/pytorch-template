@@ -1,7 +1,8 @@
-exp_name: tgs-net-aux-depth-v6.1
+exp_name: SaltNet-v8.1
 version: 2.0
 workspace: /root/trash/log
-n_gpu: 1
+apex: True
+n_gpu: 2
 arch:
   type: TGS_UNet
   args:
@@ -10,6 +11,7 @@ arch:
     encoder_weights: imagenet
     decoder_attention_type: scse
     activation: sigmoid
+    # activation: identity
     aux_params:
       pooling: avg
       dropout: 0.5
@@ -26,27 +28,27 @@ dataloader:
     test_mode: False
     resize: [128, 128]
 optimizer:
-  type: Adam
+  type: SGD
   args:
-    lr: 1e-4
+    lr: 1e-3
     weight_decay: 0
 loss:
-  type: Tgs_Loss
+  type: Tgs_Loss_v2
 metrics:
   - tgs_accuracy
+  - tgs_kaggle_iou_v2
 lr_scheduler:
-  type: StepLR
+  type: ReduceLROnPlateau
   args:
-    step_size: 10
-    gamma: 0.5
+    patience: 10
 trainer:
   type: BasicTrainer
   args:
-    epochs: 200
+    epochs: 500
     save_period: 1
     verbosity: 2
     monitor: min val_loss
-    early_stop: 11
+    early_stop: 50
     tensorboard: False
     save_params_hist: False
 
@@ -63,11 +65,7 @@ valid_dataloader:
 valid_metrics:
   [tgs_accuracy, tgs_kaggle_iou, tgs_accurary_classify, tgs_kaggle_iou_v2]
 valid_hook:
-  - func: plot_seg
-    args:
-      shuffle: True
-      n_samples: 10
-  - save_tensor
+  - save_seg_result
 
 #--------predict---------
 predict_dataloader:

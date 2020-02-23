@@ -32,7 +32,7 @@ class ConfigParser:
         self.config['trainer']['args']['tensorboard_dir'].mkdir(parents=True, exist_ok=True)
         self.config['prediction_path'].mkdir(parents=True, exist_ok=True)
 
-    def get_trainer(self, resume=True):
+    def get_trainer(self, resume=None):
         return self.parser.get_trainer(resume)
 
     def init_dataloader(self, loader_name):
@@ -92,7 +92,7 @@ class ConfigParserV2:
 
         self.config['trainer']['args']['n_gpu'] = self.config['n_gpu']
 
-    def get_trainer(self, resume=True):
+    def get_trainer(self, resume=None):
 
         # init dataloader
         data_loader = self._init_obj(DATA_LOADER, self.config['dataloader'])

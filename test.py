@@ -36,18 +36,18 @@ class DataCollection:
 
         if len(self._data) == 0:
             for i in range(len(data)):
-                self._data.append(data[i].detach())
+                self._data.append(data[i].detach().cpu())
         else:
             for i in range(len(data)):
-                self._data[i] = torch.cat([self._data[i], data[i].detach()], dim=0)
+                self._data[i] = torch.cat([self._data[i], data[i].detach().cpu()], dim=0)
 
         self.n_samples += len(data[0])
 
     def get_data(self):
         if len(self._data) == 1:
-            return self._data[0]
+            return torch.clone(self._data[0])
         else:
-            return self._data
+            return [torch.clone(x) for x in self._data]
 
     def __len__(self):
         return self.n_samples
@@ -84,8 +84,15 @@ def main(config, resume_model=None, device=None):
 
     preds = DataCollection()
     targets = DataCollection()
+
+    output_path = configParser['prediction_path']
+    (output_path / 'mask').mkdir(exist_ok=True, parents=True)
+    (output_path / 'target').mkdir(exist_ok=True, parents=True)
+    imgs_path = data_loader.dataset.imgs
+    i = 0
+
     with torch.no_grad():
-        for i, (data, target) in enumerate(tqdm(data_loader)):
+        for data, target in tqdm(data_loader):
             target = to_device(target, device)
             data = to_device(data, device)
             output = model(data)
@@ -93,28 +100,38 @@ def main(config, resume_model=None, device=None):
             preds.append(output)
             targets.append(target)
 
+            masks = output[0].detach().cpu()
+            target = target[0].detach().cpu()
+            for k in range(masks.shape[0]):
+                img_path = output_path / 'mask' / ('%s.npy' % Path(imgs_path[i]).stem)
+                np.save(img_path, masks[k])
+
+                target_path = output_path / 'target' / ('%s.npy' % Path(imgs_path[i]).stem)
+                np.save(target_path, target[k])
+
+                i = i + 1
+
     n_samples = len(data_loader.sampler)
 
     logger.info("=" * 50)
     logger.info("= support\t:%d" % (n_samples))
-    params = {
-        'predicts': preds.get_data(),
-        'targets': targets.get_data()
-    }
     for metric in metrics:
+        params = {
+            'predicts': preds.get_data(),
+            'targets': targets.get_data()
+        }
         score = metric(**params)
         logger.info("= %s\t:%f" % (metric.__name__, score))
 
     logger.info("=" * 50)
 
-    params = {
-        'dataset': data_loader.dataset,
-        'predicts': preds,
-        'targets': targets,
-        'workspace': configParser['prediction_path']
-    }
-
     for hook in predict_hooks:
+        params = {
+            'dataset': data_loader.dataset,
+            'predicts': preds.get_data(),
+            'targets': targets.get_data(),
+            'workspace': configParser['prediction_path']
+        }
         hook(**params)
 
 
