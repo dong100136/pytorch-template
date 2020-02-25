@@ -1,4 +1,4 @@
-exp_name: SaltNet-v8.1
+exp_name: SaltNet-v8.2
 version: 2.0
 workspace: /root/trash/log
 apex: True
@@ -10,8 +10,8 @@ arch:
     classes: 1
     encoder_weights: imagenet
     decoder_attention_type: scse
-    activation: sigmoid
-    # activation: identity
+    # activation: sigmoid
+    activation: identity
     aux_params:
       pooling: avg
       dropout: 0.5
@@ -20,27 +20,28 @@ arch:
 dataloader:
   type: TgsDataLoader
   args:
-    train_csv: /root/dataset/tgs-salt-identification-challenge/train_v2.csv
-    valid_csv: /root/dataset/tgs-salt-identification-challenge/valid_v2.csv
-    batch_size: 32
+    train_csv: /root/dataset/tgs-salt-identification-challenge/train.csv
+    valid_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv
+    batch_size: 64
     training: True
     num_workers: 8
-    test_mode: False
-    resize: [128, 128]
 optimizer:
   type: SGD
   args:
-    lr: 1e-3
-    weight_decay: 0
+    lr: 1e-5
+    momentum: 0.9
+    weight_decay: 0.00001
 loss:
   type: Tgs_Loss_v2
 metrics:
   - tgs_accuracy
-  - tgs_kaggle_iou_v2
+  - tgs_kaggle_iou_mask
 lr_scheduler:
-  type: ReduceLROnPlateau
+  type: CyclicLR
   args:
-    patience: 10
+    base_lr: 0.0000001
+    max_lr: 0.0001
+    step_size_up: 30
 trainer:
   type: BasicTrainer
   args:
@@ -48,7 +49,7 @@ trainer:
     save_period: 1
     verbosity: 2
     monitor: min val_loss
-    early_stop: 50
+    early_stop: 20
     tensorboard: False
     save_params_hist: False
 
@@ -56,14 +57,12 @@ trainer:
 valid_dataloader:
   type: TgsDataLoader
   args:
-    train_csv: /root/dataset/tgs-salt-identification-challenge/valid_v2.csv
+    train_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv
     batch_size: 64
     training: False
     num_workers: 8
-    test_mode: False
-    resize: [128, 128]
 valid_metrics:
-  [tgs_accuracy, tgs_kaggle_iou, tgs_accurary_classify, tgs_kaggle_iou_v2]
+  [tgs_accuracy, tgs_kaggle_iou, tgs_accurary_classify, tgs_kaggle_iou_mask]
 valid_hook:
   - save_seg_result
 
@@ -75,5 +74,3 @@ predict_dataloader:
     batch_size: 128
     training: False
     num_workers: 4
-    test_mode: False
-    resize: [128, 128]

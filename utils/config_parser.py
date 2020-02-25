@@ -92,6 +92,12 @@ class ConfigParserV2:
 
         self.config['trainer']['args']['n_gpu'] = self.config['n_gpu']
 
+    def __save_model_arch_to_file(self, model, file_path):
+        with open(file_path / "model.arch", 'w') as f:
+            f.write(str(model))
+
+        self.logger.info("save model arch to %s" % (file_path / "model.arch"))
+
     def get_trainer(self, resume=None):
 
         # init dataloader
@@ -100,7 +106,7 @@ class ConfigParserV2:
 
         # build model architecture, then print to console
         model = self._init_obj(ARCH, self.config['arch'])
-        self.logger.info(model)
+        self.__save_model_arch_to_file(model, self.config['trainer']['args']['checkerpoint_dir'])
 
         # get function handles of loss and metrics
         criterion = self._init_obj(LOSS, self.config['loss'])

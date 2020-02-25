@@ -18,6 +18,7 @@ class BasicTrainer(BaseTrainer):
                  len_epoch=None,
                  save_params_hist=False,
                  logger=None,
+                 amp=None,
                  **kwargs):
         super().__init__(model, criterion, metric_ftns, optimizer, config, logger)
         self.config = config
@@ -39,6 +40,7 @@ class BasicTrainer(BaseTrainer):
 
         self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.amp = amp
 
     def _train_epoch(self, epoch):
         """
@@ -57,7 +59,12 @@ class BasicTrainer(BaseTrainer):
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
-            loss.backward()
+
+            if self.amp:
+                with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
             self.optimizer.step()
 
             speed = self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)

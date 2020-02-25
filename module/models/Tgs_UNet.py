@@ -25,7 +25,6 @@ class TGS_UNet(smp.base.SegmentationModel):
         activation: Optional[Union[str, callable]] = None,
         aux_params: Optional[dict] = None,
     ):
-
         super().__init__()
 
         self.encoder = get_encoder(
@@ -35,8 +34,18 @@ class TGS_UNet(smp.base.SegmentationModel):
             weights=encoder_weights,
         )
 
+        # change the arch of encoder
+        self.encoder.conv1 = nn.Conv2d(in_channels, 64, 3, 2, padding=1)
+        self.encoder.maxpool = nn.Identity()
+
         encoder_out_channels = list(self.encoder.out_channels)
         encoder_out_channels[-1] += 1
+
+        #! skip one downsample
+        encoder_depth = 4
+        decoder_channels = (256, 128, 64, 32)
+        encoder_out_channels[2] += encoder_out_channels[1]
+        encoder_out_channels[1] = 3
 
         self.decoder = UnetDecoder(
             encoder_channels=encoder_out_channels,
@@ -80,13 +89,18 @@ class TGS_UNet(smp.base.SegmentationModel):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
 
         depth = x[1].float()
-        depth_features = depth.reshape((-1, 1, 1, 1)).expand(-1, -1, 4, 4)
 
         img = x[0]
         features = self.encoder(img)
         features_without_depth = features[-1]
+        h, w = features_without_depth.shape[2:]
 
+        depth_features = depth.reshape((-1, 1, 1, 1)).expand((-1, -1, h, w))
         features[-1] = torch.cat([features[-1], depth_features], dim=1)
+
+        #! skip one downsample
+        features[2] = torch.cat([features[1], features[2]], dim=1)
+        features[1] = features[0]
         decoder_output = self.decoder(*features)
 
         masks = self.segmentation_head(decoder_output)

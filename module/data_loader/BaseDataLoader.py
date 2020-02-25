@@ -18,16 +18,7 @@ class BaseDataLoader(DataLoader):
     _args = {
         "batch_size": 16,
         "num_workers": 1,
-        "imgs_mean": (0.5, 0.5, 0.5),  # imagenet
-        "imgs_std": (1, 1, 1),  # imagenet
-        "training": True,
-        "split": 0,
-        "test_mode": False,
-        "collate_fn": default_collate,
-        "resize": None,
-        "masks_col": 'masks',
-        'img_col': 'images',
-        'data_augement': False
+        'training': True
     }
 
     def __init__(self, datasets, valid_datasets=None, *args, **kwargs):
@@ -35,14 +26,13 @@ class BaseDataLoader(DataLoader):
         self.dataset = datasets
         self.valid_datasets = valid_datasets
 
-        self.n_samples = len(self.dataset)
-        print("get %d data for train_data" % (self.n_samples))
+        print("get %d data for train_data" % (len(datasets)))
+        print("get %d data for valid_data" % (len(valid_datasets)))
 
         self.init_kwargs = {
             'dataset': self.dataset,
             'batch_size': self._args['batch_size'],
             'shuffle': self._args['training'],
-            'collate_fn': self._args['collate_fn'],
             'num_workers': self._args['num_workers'],
             'pin_memory': True
         }
@@ -53,14 +43,10 @@ class BaseDataLoader(DataLoader):
             'dataset': self.valid_datasets,
             'batch_size': self._args['batch_size'],
             'shuffle': self._args['training'],
-            'collate_fn': self._args['collate_fn'],
             'num_workers': self._args['num_workers'],
-            'pin_memory': True
+            'pin_memory': True,
         }
         return DataLoader(**init_kwargs)
 
     def split_validation(self):
-        if self._args['test_mode']:
-            return self
-        else:
-            return self.__init_valid_dataloader()
+        return self.__init_valid_dataloader()

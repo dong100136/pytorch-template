@@ -36,7 +36,11 @@ class Tgs_Loss_v2(nn.Module):
         pred_masks, pred_labels = preds
         target_masks, target_labels = targets
 
-        loss1 = lovasz_hinge(pred_masks, target_masks)
+        assert target_masks.shape == pred_masks.shape
+
+        # loss1 = lovasz_hinge(pred_masks, target_masks)
+
+        loss1 = (lovasz_hinge(pred_masks, target_masks) + lovasz_hinge(-pred_masks, 1 - target_masks)) / 2
 
         # loss3 = F.binary_cross_entropy_with_logits(pred_labels, target_labels.float())
 

@@ -19,10 +19,10 @@ rle_mask = []
 
 for img_path in tqdm(imgs_path):
     img = np.load(img_path)
-    img = cv2.resize(img, (101, 101))
-
     img[img <= threshold] = 0
     img[img > threshold] = 1
+
+    img = img[13:114, 13:114]
 
     rLen = RLenc(img)
     img_name = img_path.stem

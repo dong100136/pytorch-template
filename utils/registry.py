@@ -23,7 +23,7 @@ class Registry(dict):
         f = some_registry["foo_modeul"]
     '''
 
-    def __init__(self, name,*args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
         super(Registry, self).__init__(*args, **kwargs)
         self.name = name
 

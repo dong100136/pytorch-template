@@ -15,8 +15,8 @@ def tgs_kaggle_iou(predicts, targets):
     return kaggle_iou(predicts[0], targets[0])
 
 
-@METRICS.register("tgs_kaggle_iou_v2")
-def tgs_kaggle_iou_v2(predicts, targets):
+@METRICS.register("tgs_kaggle_iou_mask")
+def tgs_kaggle_iou_mask(predicts, targets):
     masks = predicts[0]
     labels = predicts[1]
     for i in range(len(masks)):

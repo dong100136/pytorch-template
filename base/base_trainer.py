@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 import logging
 import pandas as pd
+from apex import amp
+from collections import OrderedDict
+
+opt_level = 'O1'
 
 
 class BaseTrainer:
@@ -59,6 +63,8 @@ class BaseTrainer:
             self.load_pretrain_model(cfg_trainer['resume'])
 
         self.load_last_checkpoint()
+
+        model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level)
 
     def load_pretrain_model(self, resume_path):
         resume_path = str(resume_path)
@@ -193,7 +199,8 @@ class BaseTrainer:
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'monitor_best': self.mnt_best,
-            'config': self.config
+            'config': self.config,
+            'amp': amp.state_dict()
         }
         filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         torch.save(state, filename)
@@ -213,6 +220,13 @@ class BaseTrainer:
                     self.logger.info("removing older pth {}".format(pth_name))
                     os.remove(pth_file)
 
+    def _remove_module(self, state_dict):
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            namekey = k[7:]  # remove `module.`
+            new_state_dict[namekey] = v
+        return new_state_dict
+
     def _resume_checkpoint(self, resume_path):
         """
         Resume from saved checkpoints
@@ -230,6 +244,7 @@ class BaseTrainer:
             self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
                                 "checkpoint. This may yield an exception while state_dict is being loaded.")
         self.model.load_state_dict(checkpoint['state_dict'])
+        # self.model.load_state_dict(self._remove_module(checkpoint['state_dict']))
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
