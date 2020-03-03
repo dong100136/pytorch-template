@@ -36,10 +36,17 @@ class DataCollection:
 
         if len(self._data) == 0:
             for i in range(len(data)):
-                self._data.append(data[i].detach().cpu())
+                if isinstance(data[i], list):
+                    self._data.append(DataCollection())
+                    self._data[i].append(data[i])
+                else:
+                    self._data.append(data[i].detach().cpu())
         else:
             for i in range(len(data)):
-                self._data[i] = torch.cat([self._data[i], data[i].detach().cpu()], dim=0)
+                if isinstance(self._data[i], DataCollection):
+                    self._data[i].append(data[i])
+                else:
+                    self._data[i] = torch.cat([self._data[i], data[i].detach().cpu()], dim=0)
 
         self.n_samples += len(data[0])
 
@@ -47,7 +54,10 @@ class DataCollection:
         if len(self._data) == 1:
             return torch.clone(self._data[0])
         else:
-            return [torch.clone(x) for x in self._data]
+            return [
+                x.get_data() if isinstance(x, DataCollection) else torch.clone(x)
+                for x in self._data
+            ]
 
     def __len__(self):
         return self.n_samples

@@ -38,7 +38,7 @@ class ConfigParser:
     def init_dataloader(self, loader_name):
         return self.parser.init_dataloader(loader_name)
 
-    def init_model(self, verbose=True):
+    def init_model(self, verbose=False):
         return self.parser.init_model(verbose=verbose)
 
     def init_metrics(self, name='metrics'):
@@ -131,7 +131,7 @@ class ConfigParserV2:
 
         return trainer
 
-    def init_model(self, verbose=True):
+    def init_model(self, verbose=False):
         model = self._init_obj(ARCH, self.config['arch'])
         if verbose:
             self.logger.info(model)

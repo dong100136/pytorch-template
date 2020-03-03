@@ -8,6 +8,23 @@ from segmentation_models_pytorch.base.heads import SegmentationHead, Classificat
 from segmentation_models_pytorch.base.modules import Activation
 from ..registry import ARCH
 from typing import Optional, Union, List
+import numpy as np
+
+# ！ this is a bug
+torch.backends.cudnn.enabled = False
+
+
+class Features:
+    features = None
+
+    def __init__(self, layer):
+        self.hook = layer.register_forward_hook(self._hook_fn)
+
+    def _hook_fn(self, module, x_in, x_out):
+        self.features = x_out
+
+    def remove(self):
+        self.hook.remove()
 
 
 @ARCH.register("TGS_UNet")
@@ -24,8 +41,10 @@ class TGS_UNet(smp.base.SegmentationModel):
         classes: int = 1,
         activation: Optional[Union[str, callable]] = None,
         aux_params: Optional[dict] = None,
+        out_size: List[int] = (128, 128)
     ):
         super().__init__()
+        self.out_size = out_size
 
         self.encoder = get_encoder(
             encoder_name,
@@ -56,11 +75,24 @@ class TGS_UNet(smp.base.SegmentationModel):
             attention_type=decoder_attention_type,
         )
 
-        self.segmentation_head = SegmentationHead(
-            in_channels=decoder_channels[-1],
-            out_channels=classes,
-            activation=activation,
-            kernel_size=3,
+        self.decoder_features = [Features(x) for x in self.decoder.blocks]
+        self.decoder_features_channels = [encoder_out_channels[-1]] + list(decoder_channels)
+
+        self.upsample = nn.ModuleList([
+            nn.UpsamplingBilinear2d(size=out_size)
+            for _ in self.decoder_features_channels
+        ])
+        self.upsample_conv = nn.ModuleList([
+            self.conv2d_bn_activate_conv2d(in_c, classes)
+            for in_c in self.decoder_features_channels
+        ])
+
+        self.segmentation_head = nn.Sequential(
+            nn.Dropout2d(p=0.5, inplace=True),
+            nn.Conv2d(np.sum(self.decoder_features_channels), 96, 3, padding=1),
+            nn.BatchNorm2d(96),
+            nn.ReLU(),
+            nn.Conv2d(96, 1, 3, padding=1)
         )
 
         if aux_params is not None:
@@ -85,6 +117,15 @@ class TGS_UNet(smp.base.SegmentationModel):
         self.name = "u-{}".format(encoder_name)
         self.initialize()
 
+    def conv2d_bn_activate_conv2d(self, in_channels, out_channels, filters=32):
+        return nn.Sequential(
+            nn.Dropout2d(p=0.5, inplace=True),
+            nn.Conv2d(in_channels, filters, 3, padding=1),
+            nn.BatchNorm2d(filters),
+            nn.ReLU(),
+            nn.Conv2d(filters, out_channels, 3, padding=1)
+        )
+
     def forward(self, x):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
 
@@ -96,14 +137,28 @@ class TGS_UNet(smp.base.SegmentationModel):
         h, w = features_without_depth.shape[2:]
 
         depth_features = depth.reshape((-1, 1, 1, 1)).expand((-1, -1, h, w))
-        features[-1] = torch.cat([features[-1], depth_features], dim=1)
+        encoder_feature = torch.cat([features[-1], depth_features], dim=1)
+        features[-1] = encoder_feature
 
         #! skip one downsample
         features[2] = torch.cat([features[1], features[2]], dim=1)
         features[1] = features[0]
         decoder_output = self.decoder(*features)
 
-        masks = self.segmentation_head(decoder_output)
+        # * get decoder features
+        decoder_features = [encoder_feature, ] + [x.features for x in self.decoder_features]
+        upsample_features = [
+            layer(x)
+            for layer, x in zip(self.upsample, decoder_features)
+        ]
+
+        upsample_masks = [
+            layer(x) for layer, x in zip(self.upsample_conv, upsample_features)
+        ]
+
+        concat_features = torch.cat(upsample_features, dim=1)
+
+        masks = self.segmentation_head(concat_features)
         masks = masks.squeeze(dim=1)
 
         if self.classification_head is not None:
@@ -113,6 +168,7 @@ class TGS_UNet(smp.base.SegmentationModel):
 
             labels = self.classification_head(features_without_depth)
             labels = labels.squeeze(dim=1)
-            return masks, labels
+            return masks, labels, upsample_masks
+            # return masks, labels
 
         return masks

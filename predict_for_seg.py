@@ -12,6 +12,10 @@ import os
 
 from utils.config_parser import ConfigParser
 
+config = {
+    'predictor_output': 'mask'
+}
+
 
 def to_device(data, device):
     if isinstance(data, list):
@@ -53,11 +57,12 @@ def main(config, resume_model=None, device=None):
     model = model.to(device)
     model.eval()
 
-    output_path = configParser['prediction_path'] / 'mask'
+    output_path = configParser['prediction_path'] / configParser['predictor_output']
     output_path.mkdir(exist_ok=True, parents=True)
     imgs_path = data_loader.dataset.imgs
     num_samples = len(imgs_path)
     i = 0
+
     with torch.no_grad():
         for data in tqdm(data_loader):
             if isinstance(data, list) and isinstance(data[0], list):
@@ -65,7 +70,7 @@ def main(config, resume_model=None, device=None):
             data = to_device(data, device)
             output = model(data)
 
-            masks = output[0].cpu().detach().numpy()
+            masks = torch.sigmoid(output[0]).cpu().detach().numpy()
 
             for k in range(masks.shape[0]):
                 img_path = output_path / ('%s.npy' % Path(imgs_path[i]).stem)
@@ -91,5 +96,6 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     with open(args.config, 'r') as f:
-        config = yaml.load(f, Loader=Loader)
+        tmp_config = yaml.load(f, Loader=Loader)
+        config.update(tmp_config)
     main(config, args.resume, args.device)

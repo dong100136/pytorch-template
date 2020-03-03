@@ -6,3 +6,4 @@ seaborn
 pretty_errors
 torchsummary
 segmentation_models_pytorch
+edafa

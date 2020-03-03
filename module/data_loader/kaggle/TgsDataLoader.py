@@ -5,6 +5,7 @@ import albumentations as A
 import cv2
 import numpy as np
 import pandas as pd
+import PIL
 import torch
 import torchvision
 from albumentations import (Compose, HorizontalFlip, RandomBrightness,
@@ -23,26 +24,30 @@ class TgsDataLoader(BaseDataLoader):
     test_mode = False
 
     def __init__(self, train_csv, valid_csv=None, *args, **kwargs):
-        self.train_dataset = CSVImgDataSet(train_csv, data_aug=kwargs['training'], test_mode=self.test_mode)
+        self.train_dataset = CSVImgDataSet(
+            train_csv, data_aug=kwargs['training'],
+            test_mode=self.test_mode,
+            **kwargs)
         if valid_csv == None or self.test_mode == True:
             self.valid_dataset = self.train_dataset
         else:
-            self.valid_dataset = CSVImgDataSet(valid_csv)
+            self.valid_dataset = CSVImgDataSet(valid_csv, **kwargs)
 
         return super().__init__(self.train_dataset, self.valid_dataset, *args, **kwargs)
 
 
 class CSVImgDataSet(Dataset):
-    def __init_transformer(self):
+    def __init_transformer(self, **kwargs):
         transform_ftn = []
 
         # transform_ftn.append(A.Normalize())
-        # RandomBrightness(p=0.2, limit=0.2),
-        # RandomContrast(p=0.1, limit=0.2),
 
         if self.data_aug:
             transform_ftn.extend([
+                A.Normalize(),
                 HorizontalFlip(p=0.5),
+                RandomBrightness(p=0.2, limit=0.2),
+                RandomContrast(p=0.1, limit=0.2),
                 ShiftScaleRotate(shift_limit=0.1625, scale_limit=0.6, rotate_limit=0, p=0.7)
             ])
         transform_ftn.append(
@@ -53,10 +58,11 @@ class CSVImgDataSet(Dataset):
         transforms = A.Compose(transform_ftn)
         return transforms
 
-    def __init__(self, csv_data, data_aug=False, test_mode=False):
+    def __init__(self, csv_data, data_aug=False, test_mode=False, TTA=None, **kwarg):
         self.csv_data = Path(csv_data)
         self.base_path = self.csv_data.parent
         self.data_aug = data_aug
+        self.tta = TTA
 
         self.data = pd.read_csv(csv_data)
         self.depths = [int(x) for x in self.data['depths']]
@@ -76,17 +82,38 @@ class CSVImgDataSet(Dataset):
     def __len__(self):
         return self.n_samples
 
+    def __tta(self, img):
+        """[summary]
+
+        Arguments:
+            img {[PIL.Image]} -- input image
+
+        Returns:
+            img -- output image after tta
+        """
+        if self.tta == None:
+            return img
+        elif self.tta == "FLIP_UD":
+            img = PIL.ImageOps.mirror(img)
+            return img
+        else:
+            raise Exception("unknown tta type [%s]" % self.tta)
+
     def __getitem__(self, id):
         index = self.idx[id]
 
         # depth normalize
         depth = (self.depths[index] - 506) / 209
 
-        gray = np.array(Image.open(self.imgs[index]).convert('RGB')) / 255
+        gray = Image.open(self.imgs[index]).convert('RGB')
+        gray = self.__tta(gray)
+        gray = np.array(gray)
+
         data = {'image': gray}
 
         if self.have_label:
             mask = Image.open(self.masks[index]).convert('1')
+            # mask = self.__tta(mask)
             mask = np.array(mask).astype(int)
             data['mask'] = mask
 

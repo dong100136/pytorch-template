@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import logging
 import pandas as pd
-from apex import amp
+# from apex import amp
 from collections import OrderedDict
 
 opt_level = 'O1'
@@ -64,7 +64,7 @@ class BaseTrainer:
 
         self.load_last_checkpoint()
 
-        model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level)
+        # model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level)
 
     def load_pretrain_model(self, resume_path):
         resume_path = str(resume_path)
@@ -109,7 +109,7 @@ class BaseTrainer:
             result = self._train_epoch(epoch)
 
             # save logged informations into log dict
-            log = {'epoch': epoch}
+            log = {'epoch': epoch, 'lr': self.get_lr()}
             log.update(result)
 
             # print logged informations to the screen
@@ -200,7 +200,7 @@ class BaseTrainer:
             'optimizer': self.optimizer.state_dict(),
             'monitor_best': self.mnt_best,
             'config': self.config,
-            'amp': amp.state_dict()
+            # 'amp': amp.state_dict()
         }
         filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         torch.save(state, filename)
@@ -226,6 +226,9 @@ class BaseTrainer:
             namekey = k[7:]  # remove `module.`
             new_state_dict[namekey] = v
         return new_state_dict
+
+    def get_lr(self):
+        return self.optimizer.param_groups[0]['lr']
 
     def _resume_checkpoint(self, resume_path):
         """

@@ -60,11 +60,11 @@ class BasicTrainer(BaseTrainer):
             output = self.model(data)
             loss = self.criterion(output, target)
 
-            if self.amp:
-                with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
+            # if self.amp:
+            #     with self.amp.scale_loss(loss, self.optimizer) as scaled_loss:
+            #         scaled_loss.backward()
+            # else:
+            loss.backward()
             self.optimizer.step()
 
             speed = self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
