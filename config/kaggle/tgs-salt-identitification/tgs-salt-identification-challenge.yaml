@@ -1,4 +1,4 @@
-exp_name: SaltNet-v10.1
+exp_name: SaltNet-v9.3
 version: 2.0
 workspace: /root/trash/log
 apex: False
@@ -6,7 +6,7 @@ n_gpu: 1
 arch:
   type: TGS_UNet
   args:
-    encoder_name: resnet34
+    encoder_name: resnext50_32x4d
     classes: 1
     encoder_weights: imagenet
     decoder_attention_type: scse

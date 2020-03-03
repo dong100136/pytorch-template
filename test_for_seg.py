@@ -100,6 +100,4 @@ if __name__ == '__main__':
     if args.device:
         os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
-    with open(args.config, 'r') as f:
-        config = yaml.load(f, Loader=Loader)
-    main(config, args.resume, args.device)
+    main(args.config, args.resume, args.device)

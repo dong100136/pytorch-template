@@ -34,8 +34,6 @@ if __name__ == '__main__':
                         help='indices of GPUs to enable (default: all)')
 
     args = parser.parse_args()
-    with open(args.config, 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
 
     # custom cli options to modify configuration from default values given in json file.
-    main(config, args.resume, args.device)
+    main(args.config, args.resume, args.device)

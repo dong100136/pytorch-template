@@ -1,0 +1,6 @@
+exp_name: SaltNet_V11_fold2
+base_on: tgs.yaml
+dataloader:
+  args:
+    train_csv: /root/dataset/tgs-salt-identification-challenge/train.csv.fold2
+    valid_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv.fold2

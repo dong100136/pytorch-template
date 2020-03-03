@@ -98,4 +98,4 @@ if __name__ == '__main__':
     with open(args.config, 'r') as f:
         tmp_config = yaml.load(f, Loader=Loader)
         config.update(tmp_config)
-    main(config, args.resume, args.device)
+    main(args.config, args.resume, args.device)

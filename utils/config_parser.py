@@ -4,20 +4,44 @@ import os
 from functools import partial
 from inspect import isfunction
 from pathlib import Path
+import yaml
+from yaml import FullLoader as Loader
+from prettyprinter import pprint
+
+
+def merge(source, destination):
+    """
+    run me with nosetests --with-doctest file.py
+
+    >>> a = { 'first' : { 'all_rows' : { 'pass' : 'dog', 'number' : '1' } } }
+    >>> b = { 'first' : { 'all_rows' : { 'fail' : 'cat', 'number' : '5' } } }
+    >>> merge(b, a) == { 'first' : { 'all_rows' : { 'pass' : 'dog', 'fail' : 'cat', 'number' : '5' } } }
+    True
+    """
+    for key, value in source.items():
+        if isinstance(value, dict):
+            # get node or create one
+            node = destination.setdefault(key, {})
+            merge(value, node)
+        else:
+            destination[key] = value
+
+    return destination
 
 
 class ConfigParser:
-    def __init__(self, config):
+    version = 2
+
+    def __init__(self, config_path):
         logger = self.get_logger('train')
         logger.warning("test")
 
-        self.config = config
-        self.version = config['version']
-
         if self.version == 2:
-            self.parser = ConfigParserV2(config, logger)
+            self.parser = ConfigParserV2(config_path, logger)
         else:
             self.parser = self._init_default_config_parser(config, logger)
+
+        self.config = self.parser.config
 
         self.config['trainer']['args']['checkerpoint_dir'] = Path(
             self.config['workspace']) / 'model' / self.config['exp_name']
@@ -82,7 +106,10 @@ class ConfigParserV2:
         }
     }
 
-    def __init__(self, config, logger):
+    def __init__(self, config_path, logger):
+        config = self.load_config(config_path)
+        # ! test
+        pprint(config)
         self.config.update(config)
         self.logger = logger
 
@@ -91,6 +118,19 @@ class ConfigParserV2:
             self.config['optimizer']['args']['lr'] = float(lr)
 
         self.config['trainer']['args']['n_gpu'] = self.config['n_gpu']
+
+    def load_config(self, config_path):
+        assert os.path.exists(config_path)
+
+        with open(config_path, 'r') as f:
+            config = yaml.load(f, Loader)
+
+        if 'base_on' in config:
+            base_config_path = os.path.join(os.path.dirname(config_path), config['base_on'])
+            base_config = self.load_config(base_config_path)
+            config = merge(config, base_config)
+            config.pop('base_on')
+        return config
 
     def __save_model_arch_to_file(self, model, file_path):
         with open(file_path / "model.arch", 'w') as f:

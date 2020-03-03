@@ -1,0 +1,21 @@
+version: 2.0
+workspace: /root/trash/log
+apex: False
+n_gpu: 1
+optimizer:
+  type: Adam
+  args:
+    lr: 1e-4
+    # momentum: 0.9
+    weight_decay: 0.00001
+
+lr_scheduler:
+  # type: CyclicLR
+  # args:
+  #   base_lr: 0.0000001
+  #   max_lr: 0.0001
+  #   step_size_up: 30
+  type: StepLR
+  args:
+    step_size: 10
+    gamma: 0.5
