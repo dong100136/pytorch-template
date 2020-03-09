@@ -1,11 +1,13 @@
-from module import *
 import logging
 import os
 from functools import partial
 from inspect import isfunction
 from pathlib import Path
+
 import yaml
 from yaml import FullLoader as Loader
+
+from module import *
 from prettyprinter import pprint
 
 
@@ -70,6 +72,9 @@ class ConfigParser:
             return self.parser.init_metrics(name)
         else:
             return []
+
+    def get_predicter(self, resume=None):
+        return self.parser.get_predictor(resume)
 
     def get_hooks(self, hook_names):
         if hook_names in self.config and self.config[hook_names] and len(self.config[hook_names]) > 0:
@@ -187,14 +192,27 @@ class ConfigParserV2:
         dataloader = self._init_obj(DATA_LOADER, self.config[dataloader_name])
         return dataloader
 
+    def get_predictor(self, resume):
+        hooks = self.get_hooks('predictor_hooks')
+        dataloader = self._init_obj(DATA_LOADER, self.config['predict_dataloader'])
+        model = self.init_model(verbose=False)
+        predictor = self._init_obj(PREDICTOR, self.config['predictor'],
+                                   model=model,
+                                   dataloader=dataloader,
+                                   config=self.config, hooks=hooks)
+        return predictor
+
     def get_hooks(self, hook_names):
         return [
-            self._init_obj(HOOK, hook_name)
+            self._init_obj(HOOK, hook_name,
+                           workspace=self.config['prediction_path'])
             for hook_name in self.config[hook_names]
         ]
 
-    def _init_obj(self, registry, obj, *args, **kwargs):
+    def _init_obj(self, registry, obj, **kwargs):
         if isinstance(obj, dict):
+            assert 'type' in obj or 'func' in obj
+
             is_function = ('func' in obj)
             if is_function:
                 module_name = obj['func']
@@ -212,10 +230,10 @@ class ConfigParserV2:
             obj = registry[module_name]
             if is_function:
                 return partial(
-                    obj, *args, **module_args
+                    obj, **module_args
                 )
             else:
-                return obj(*args, **module_args)
+                return obj(**module_args)
             # return registry[module_name](*args,**module_args)
         elif isinstance(obj, str):
             return registry[obj]

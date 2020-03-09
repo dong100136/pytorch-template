@@ -4,13 +4,14 @@ import pandas as pd
 import cv2
 import sys
 sys.path.append("/root/project/paper/pytorch-template")
-from utils.img_tools import RLenc
+from utils.img_tools import mask2rle
 from tqdm import tqdm
 
 # -------------------------------------------
-img_id_list = list(pd.read_csv("/root/dataset/tgs-salt-identification-challenge/test.csv")['images'].values)
-img_id_list = [Path(x).stem for x in img_id_list]
-base_path = Path("/root/trash/log/prediction/SaltNet_V11_merge")
+img_id_list = list(pd.read_csv("/root/dataset/carvana-image-masking-challenge/test.csv")['images'].values)
+img_id_list = [Path(x).name for x in img_id_list]
+base_path = Path("/root/trash/log/prediction/CarNet_v0")
+predict_list = ['%d.npy' % i for i in range(len(img_id_list))]
 # tta = ['mask', 'mask_flip_ud']
 tta = ['mask']
 img_names = [x.stem for x in (base_path / 'mask').glob("*.npy")]
@@ -18,7 +19,6 @@ output_file = base_path / 'submission.csv'
 threshold = 0.45
 # -------------------------------------------
 
-id = []
 rle_mask = []
 
 print(base_path)
@@ -34,11 +34,10 @@ def get_img_by_threshold(img, tta=None, threshold=0.5):
     mask[img <= threshold] = 0
     mask[img > threshold] = 1
 
-    mask = mask[13:114, 13:114]
     return mask
 
 
-for img_name in tqdm(img_names):
+for img_name in tqdm(predict_list):
     if img_name not in img_id_list:
         continue
 
@@ -51,13 +50,13 @@ for img_name in tqdm(img_names):
     masks = np.array(masks)
     predict_mask = np.mean(masks, axis=(0))
 
-    rLen = RLenc(predict_mask)
+    rLen = mask2rle(predict_mask)
     id.append(img_name)
     rle_mask.append(rLen)
     del masks, predict_mask
 
 data = pd.DataFrame({
-    'id': id,
+    'img': img_id_list,
     'rle_mask': rle_mask
 })
 data.to_csv(output_file, index=None)

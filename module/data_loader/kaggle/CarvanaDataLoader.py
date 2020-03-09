@@ -71,6 +71,7 @@ class CSVImgDataSet(Dataset):
 
         self.data = pd.read_csv(csv_data)
         self.imgs = [str(self.base_path / x) for x in self.data['images']]
+        self.datalist = [x.stem for x in self.data['images']]
         self.n_samples = len(self.imgs) if not test_mode else 100
 
         # check label info

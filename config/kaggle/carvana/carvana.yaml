@@ -13,8 +13,8 @@ dataloader:
     batch_size: 16
     training: True
     num_workers: 8
-    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/train.csv.fold0
-    valid_csv: /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0
+    train_csv: &train_csv /root/dataset/carvana-image-masking-challenge/workspace/train.csv.fold0
+    valid_csv: &valid_csv /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0
     img_size: [320, 480]
 loss:
   type: BinaryDiceLoss
@@ -36,23 +36,34 @@ trainer:
 valid_dataloader:
   type: CarvanaDataLoader
   args:
-    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0
+    train_csv: *valid_csv
     batch_size: 64
     training: False
     num_workers: 8
     # TTA: FLIP_UD
     img_size: [320, 480]
 valid_metrics: [accuracy, kaggle_IOU]
-# valid_hook:
-#   - save_seg_result
+valid_hook:
+  - type: SaveSegTensor
+    args:
+      predict_path: masks
+      target_path: targets
 
 #--------predict---------
-predictor_output: mask
+predictor:
+  type: SegPredictor
+predictor_hooks:
+  - type: SaveSegTensor
+    args:
+      predict_path: masks
+      target_path: targets
+      img_size: [1280, 1918]
 predict_dataloader:
   type: CarvanaDataLoader
   args:
-    train_csv: /root/dataset/tgs-salt-identification-challenge/test.csv
-    batch_size: 16
+    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/test.csv
+    batch_size: 64
     training: False
-    num_workers: 4
+    num_workers: 16
+    img_size: [320, 480]
     # TTA: FLIP_UD

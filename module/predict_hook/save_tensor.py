@@ -4,12 +4,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import cv2
 
 from utils.plot_utils import make_grid_img
 
 from ..registry import HOOK
 from .base_hook import BaseHook
-from abc import overide
 
 
 @HOOK.register("save_tensor")
@@ -37,9 +37,8 @@ class SaveTensor(BaseHook):
         self._predicts = None
         self._targets = None
 
-    @overide
-    def __after_epoch_hook(self, predicts, targets=None, name=None, **kwargs)
-       with torch.no_grad():
+    def __after_epoch_hook(self, predicts, targets=None, name=None, **kwargs):
+        with torch.no_grad():
             predicts = predicts.numpy()
             targets = targets.numpy()
 
@@ -47,28 +46,50 @@ class SaveTensor(BaseHook):
             self._predicts = predicts
             self._targets = targets
         else:
-            self._predicts = np.concatenate([self._predicts,predicts],axis=0)
-            self._targets = np.concatenate([self._targets,targets],axis=0)
+            self._predicts = np.concatenate([self._predicts, predicts], axis=0)
+            self._targets = np.concatenate([self._targets, targets], axis=0)
 
-    @overide
     def __after_epoch_hook(self):
         np.save(self.workspace / "predicts.npy", self._predicts)
         np.save(self.workspace / "targets.npy", self._targets)
 
+
 @HOOK.register("SaveSegTensor")
 class SaveSegTensor(BaseHook):
-    def __init__(self, workspace,predict_path="masks",target_workspace="targets", *kwargs):
+    def __init__(self,
+                 workspace,
+                 datalist=None,
+                 predict_path="masks", target_path="targets",
+                 img_size=None,
+                 **kwargs):
         """[prediction hooks for segmentation task]
         Keyword Arguments:
             predict_path {str} -- [the path to save prediction masks] (default: {"masks"})
             target_workspace {str} -- [the path to save target masks] (default: {"targets"})
         """
-        self.predict_path = workspace_path /predict_path
-        self.target_path = workspace / target_workspace
+        super(SaveSegTensor, self).__init__()
+        workspace = Path(workspace)
+        self.predict_path = workspace / predict_path
+        self.target_path = workspace / target_path
+
+        self.predict_path.mkdir(parents=True, exist_ok=True)
+        self.target_path.mkdir(parents=True, exist_ok=True)
         self.idx = 0
 
-    @overide
-    def __after_epoch_hook(self, predicts, targets=None, imgs=None, **kwargs):
+        self.resize = isinstance(img_size, list)
+        self.img_size = img_size
+
+        self.datalist = datalist
+
+    def save_img(self, img_path, img):
+        if self.resize:
+            img = cv2.resize(img,
+                             (self.img_size[1], self.img_size[0]),
+                             interpolation=cv2.INTER_NEAREST)
+
+        np.save(img_path, img)
+
+    def after_epoch_hook(self, predicts, targets=None, **kwargs):
         with torch.no_grad():
             predicts = predicts.numpy()
             targets = targets.numpy() if targets else None
@@ -76,15 +97,18 @@ class SaveSegTensor(BaseHook):
         n_samples = predicts.shape[0]
         for i in range(n_samples):
             if imgs:
-                img_name = imgs[self.idx]
+                img_name = self.datalist[self.idx]
             else:
                 img_name = self.idx
 
             self.idx += 1
-            
-            np.save(self.predict_path/("%s.npy"%img_name),predicts[i])
+
+            img_path = self.predict_path / ("%s.npy" % img_name)
+            self.save_img(img_path, predicts[i])
 
             if targets:
-                np.save(self.target_path/("%s.npy"%img_name),targets[i])
+                img_path = self.target_path / ("%s.npy" % img_name)
+                self.save_img(img_path, targets[i])
 
-
+    def after_predict_hook(self):
+        print("save %d data to %s" % (self.idx - 1, self.predict_path))

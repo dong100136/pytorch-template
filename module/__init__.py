@@ -8,3 +8,4 @@ from .trainer import *
 from .optimizer import *
 from .lr_scheduler import *
 from .predict_hook import *
+from .predictor import *
