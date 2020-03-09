@@ -1,0 +1,6 @@
+exp_name: CarNet_v0_fold0
+base_on: carvana.yaml
+dataloader:
+  args:
+    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/train.csv.fold0
+    valid_csv: /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0

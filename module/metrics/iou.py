@@ -53,7 +53,8 @@ def kaggle_iou(predicts, targets):
     scores = []
     for threshold in np.arange(0.5, 1, 0.05):
         score = float(IOU(torch.clone(predicts), torch.clone(targets), threshold=threshold))
-        score = score / threshold
+        # score = score / threshold
         scores.append(score)
 
-    return np.sum(scores)
+    # return np.sum(scores)
+    return np.mean(scores)

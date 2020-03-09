@@ -1,28 +1,26 @@
-exp_name: SaltNet
+exp_name: CarNet_v0
 base_on: base.yaml
 arch:
-  type: TGS_UNet
+  type: UNet_v2
   args:
-    encoder_name: resnext50_32x4d
-    classes: 1
-    encoder_weights: imagenet
+    backbone: mobilenet_v2
+    num_classes: 1
+    pretrained: True
     decoder_attention_type: scse
-    aux_params:
-      pooling: avg
-      dropout: 0.5
-      activation: sigmoid
-      classes: 1
 dataloader:
-  type: TgsDataLoader
+  type: CarvanaDataLoader
   args:
     batch_size: 16
     training: True
     num_workers: 8
+    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/train.csv.fold0
+    valid_csv: /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0
+    img_size: [320, 480]
 loss:
-  type: Tgs_Loss_v2
+  type: BinaryDiceLoss
 metrics:
-  - tgs_accuracy
-  - tgs_kaggle_iou_mask
+  - accuracy
+  - kaggle_IOU
 trainer:
   type: BasicTrainer
   args:
@@ -36,22 +34,22 @@ trainer:
 
 #--------valid---------
 valid_dataloader:
-  type: TgsDataLoader
+  type: CarvanaDataLoader
   args:
-    train_csv: /root/dataset/tgs-salt-identification-challenge/valid.csv
+    train_csv: /root/dataset/carvana-image-masking-challenge/workspace/valid.csv.fold0
     batch_size: 64
     training: False
     num_workers: 8
     # TTA: FLIP_UD
-valid_metrics:
-  [tgs_accuracy, tgs_kaggle_iou, tgs_accurary_classify, tgs_kaggle_iou_mask]
-valid_hook:
-  - save_seg_result
+    img_size: [320, 480]
+valid_metrics: [accuracy, kaggle_IOU]
+# valid_hook:
+#   - save_seg_result
 
 #--------predict---------
 predictor_output: mask
 predict_dataloader:
-  type: TgsDataLoader
+  type: CarvanaDataLoader
   args:
     train_csv: /root/dataset/tgs-salt-identification-challenge/test.csv
     batch_size: 16

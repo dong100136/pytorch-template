@@ -205,24 +205,17 @@ class UNet_v2(nn.Module):
         weights = 'imagenet' if pretrained else None
         activation = 'sigmoid' if num_classes == 1 else 'softmax2d'
 
-        aux_params = dict(
-            pooling='avg',             # one of 'avg', 'max'
-            dropout=0.5,               # dropout ratio, default is None
-            activation='sigmoid',      # activation function, default is None
-            classes=1,                 # define number of output labels
+        self._model = smp.Unet(
+            backbone,
+            encoder_weights=weights,
+            classes=num_classes,
+            activation=activation,
+            in_channels=3,
+            decoder_attention_type=decoder_attention_type,
         )
 
-        self._model = smp.Unet(backbone,
-                               encoder_weights=weights,
-                               classes=num_classes,
-                               activation=activation,
-                               in_channels=3,
-                               decoder_attention_type=decoder_attention_type,
-                               aux_params=aux_params)
-
     def forward(self, x):
-        mask, label = self._model(x[0])
+        mask = self._model(x)
         if self.num_classes == 1:
             mask = mask.squeeze(dim=1)
-            label = label.squeeze(dim=1)
-        return mask, label
+        return mask

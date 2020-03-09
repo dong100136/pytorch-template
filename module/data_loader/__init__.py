@@ -4,5 +4,6 @@ from .CIFARDataLoader import CIFAR100DataLoader
 from .ImageFolderLoader import ImageFolderLoader
 from .kaggle.DigitDataLoader import DigitDataLoader
 from .kaggle.TgsDataLoader import TgsDataLoader
+from .kaggle.CarvanaDataLoader import CarvanaDataLoader
 from .CSVDataLoader import CSVDataLoader
 from .CSVImgDataLoader import CSVImgDataLoader

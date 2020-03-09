@@ -10,15 +10,20 @@ from tqdm import tqdm
 # -------------------------------------------
 img_id_list = list(pd.read_csv("/root/dataset/tgs-salt-identification-challenge/test.csv")['images'].values)
 img_id_list = [Path(x).stem for x in img_id_list]
-base_path = Path("/root/trash/log/prediction/SaltNet-v9.3")
-tta = ['mask', 'mask_flip_ud']
+base_path = Path("/root/trash/log/prediction/SaltNet_V11_merge")
+# tta = ['mask', 'mask_flip_ud']
+tta = ['mask']
 img_names = [x.stem for x in (base_path / 'mask').glob("*.npy")]
 output_file = base_path / 'submission.csv'
-threshold = 0.5
+threshold = 0.45
 # -------------------------------------------
 
 id = []
 rle_mask = []
+
+print(base_path)
+print(tta)
+print("threshold=", threshold)
 
 
 def get_img_by_threshold(img, tta=None, threshold=0.5):
@@ -41,7 +46,7 @@ for img_name in tqdm(img_names):
     for t in tta:
         img_path = base_path / t / ("%s.npy" % img_name)
         img = np.load(img_path)
-        img = get_img_by_threshold(img, tta=t)
+        img = get_img_by_threshold(img, tta=t, threshold=threshold)
         masks.append(img)
     masks = np.array(masks)
     predict_mask = np.mean(masks, axis=(0))

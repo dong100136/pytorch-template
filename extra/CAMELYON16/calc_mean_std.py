@@ -8,14 +8,14 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='calc mean and std from given paths')
 parser.add_argument('paths', default=None, help="Path to the png")
-parser.add_argument('sample_num', default=3, type=int)
+parser.add_argument('sample_num', default=100, type=int)
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     path = pathlib.Path(args.paths)
-    image_list = list(path.glob("**/*.png"))
+    image_list = list(path.glob("**/*.jpg"))
     print("find {} samples, going to sample {}".format(len(image_list), args.sample_num))
 
     random.shuffle(image_list)

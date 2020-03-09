@@ -110,16 +110,16 @@ def main(config, resume_model=None, device=None):
             preds.append(output)
             targets.append(target)
 
-            masks = output[0].detach().cpu()
-            target = target[0].detach().cpu()
-            for k in range(masks.shape[0]):
-                img_path = output_path / 'mask' / ('%s.npy' % Path(imgs_path[i]).stem)
-                np.save(img_path, masks[k])
+            # masks = torch.sigmoid(output[0]).detach().cpu()
+            # target = target[0].detach().cpu()
+            # for k in range(masks.shape[0]):
+            #     img_path = output_path / 'mask' / ('%s.npy' % Path(imgs_path[i]).stem)
+            #     np.save(img_path, masks[k])
 
-                target_path = output_path / 'target' / ('%s.npy' % Path(imgs_path[i]).stem)
-                np.save(target_path, target[k])
+            #     target_path = output_path / 'target' / ('%s.npy' % Path(imgs_path[i]).stem)
+            #     np.save(target_path, target[k])
 
-                i = i + 1
+            #     i = i + 1
 
     n_samples = len(data_loader.sampler)
 

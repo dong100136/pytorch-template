@@ -74,8 +74,9 @@ def main(config, resume_model=None, device=None):
 
             for k in range(masks.shape[0]):
                 img_path = output_path / ('%s.npy' % Path(imgs_path[i]).stem)
-                if output[1][k] <= 0.5:
-                    masks[k] = 0
+                # !not using label prediction
+                # if output[1][k] <= 0.5:
+                #     masks[k] = 0
                 np.save(img_path, masks[k])
                 i = i + 1
             # print("save output to %s" % img_path)
